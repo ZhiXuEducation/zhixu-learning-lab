@@ -1,0 +1,756 @@
+<!doctype html><html lang="zh-Hans"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>知序｜中四快捷单元训练</title><style>
+:root{--green:#425d52;--cream:#f7f3ea;--gold:#b39a68;--ink:#303a35}*{box-sizing:border-box}body{margin:0;background:var(--cream);font-family:system-ui,-apple-system,sans-serif;color:var(--ink)}header{background:var(--green);color:white;padding:26px 20px}header>div,main{max-width:960px;margin:auto}h1{margin:0;font-size:28px}header p{color:#e6e6dc;margin-bottom:0}main{padding:24px 16px 60px}.card{background:white;border:1px solid #e8e4d9;border-radius:16px;padding:24px;margin-bottom:18px;box-shadow:0 8px 24px #273a2d0b}.muted{color:#676e69;font-size:14px;line-height:1.7}.tag{color:#7b715c;font-size:13px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.between{justify-content:space-between}.btn{display:inline-block;background:var(--green);border:0;border-radius:9px;color:#fff;padding:12px 18px;font-size:16px;cursor:pointer;text-decoration:none}.secondary{background:#e9e9e0;color:var(--ink)}button:disabled{opacity:.5;cursor:default}.units{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}.unit{border:1px solid #e3e6df;border-radius:12px;padding:18px}.unit h3{margin-top:0}.unit .btn{width:100%;margin-top:8px;text-align:left}.bar{height:7px;background:#e8ebe5;border-radius:8px;margin:18px 0}.bar div{height:100%;background:var(--gold);border-radius:8px}.passage{line-height:2.4;font-size:18px;white-space:pre-wrap}.blank{font-weight:700;color:#425d52;border-bottom:2px solid var(--gold);padding:0 5px}.wrongword{font-weight:600;text-decoration:underline;text-underline-offset:5px}.question{border-top:1px solid #e8e4d9;padding:18px 0}.options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.option{display:flex;gap:9px;padding:12px;background:#f8f9f6;border:1px solid #d6ded6;border-radius:9px;cursor:pointer}.option:has(input:checked){border-color:var(--green);background:#edf4ee}input[type=text]{font-size:18px;width:100%;max-width:320px;padding:10px;border:1px solid #aebcb0;border-radius:8px}.feedback{line-height:1.8;background:#f5f6f0;padding:12px;margin-top:12px;border-left:4px solid var(--gold)}.correct{border-left-color:#41845b}.incorrect{border-left-color:#bc665a}.notice{padding:12px;background:#f9f2e4;line-height:1.7}.big{font-size:38px;font-weight:bold;color:var(--green)}[hidden]{display:none!important}a{color:var(--green)}footer{text-align:center;color:#777;font-size:12px;padding:24px}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #b39a68;outline-offset:3px}@media(max-width:500px){.card{padding:18px}.options{grid-template-columns:1fr}.passage{font-size:17px}}
+</style></head><body><header><div><h1>知序 · ZHIXU</h1><p>中四快捷华文 · 单元语文应用</p></div></header><main>
+<section id="home" class="card"><div class="row between"><span class="tag">单元一至五 · 10套训练规划</span><a href="index.html">返回 P6 普华</a></div><h2>一个单元，两次扎实练习</h2><p>每套30题：综合填空15题＋词语替换15题。每篇短文5题，共六篇。</p><p class="muted">课本蓝色字词为重点，词语替换适度加入常用延伸词。所有短文均为原创专项练习；30题的训练组合与完整会考试卷的题数、分值安排不同。</p><div id="units" class="units"></div><p id="storageNote" class="muted"></p><p id="loadError" role="alert" hidden></p></section>
+<section id="quiz" class="card" hidden><div class="row between"><span id="setName" class="tag"></span><button id="back" class="btn secondary">返回单元</button></div><div class="bar"><div id="barFill"></div></div><p id="progress" class="muted"></p><h2 id="passageTitle"></h2><p id="instructions" class="notice"></p><div id="passageText" class="passage"></div><form id="answerForm"><div id="items"></div><p id="formError" role="alert"></p><div class="row"><button class="btn" id="submit">提交本篇5题</button><button class="btn" type="button" id="next" hidden>下一篇 →</button></div></form></section>
+<section id="results" class="card" hidden><span class="tag">训练完成</span><h2 id="resultTitle"></h2><div id="score" class="big"></div><p id="breakdown"></p><div id="review"></div><div class="row"><button id="retry" class="btn">复习本次错题所在短文</button><button id="returnHome" class="btn secondary">返回单元</button></div></section>
+</main><footer>© ZHIXU Education · 原创教学练习 · 成绩与错题仅储存在当前浏览器</footer><script>
+const $=id=>document.getElementById(id);let bank=[],active=null,pool=[],pos=0,submitted=false,responses=[],reviewIds=null,storageOK=true;const KEY='zhixu_s4_unit_v1';
+function read(){try{const r=JSON.parse(localStorage.getItem(KEY)||'{}');return r&&typeof r==='object'&&!Array.isArray(r)?r:{}}catch{storageOK=false;return {}}}function save(x){try{localStorage.setItem(KEY,JSON.stringify(x))}catch{storageOK=false}}
+function show(id){for(const n of ['home','quiz','results'])$(n).hidden=n!==id;window.scrollTo(0,0)}
+function home(){show('home');const record=read();$('units').replaceChildren();const names=['心手相连','文学世界','平衡之道','知己知彼','勇于逐梦'];names.forEach((name,i)=>{const box=document.createElement('div');box.className='unit';const h=document.createElement('h3');h.textContent=`单元${i+1} · ${name}`;box.append(h);for(let j=1;j<=2;j++){const set=bank.find(s=>s.id===`u${i+1}-${j}`),b=document.createElement('button');b.className='btn'+(j===2?' secondary':'');b.disabled=!set;const r=record[set?.id];b.textContent=`${j===1?'A':'B'}套 · ${set?(j===1?'基础应用':'迁移巩固'):'待制作'}${r?` · 上次 ${r.right}/${r.total}`:''}`;if(set)b.onclick=()=>start(set);box.append(b)}$('units').append(box)});$('storageNote').textContent=storageOK?'每套单独记录成绩。两套训练覆盖单元一的26项课本字词。':'当前浏览器无法保存记录，仍可完成练习并查看本次解析。'}
+function start(set,wrong=null){active=set;pos=0;responses=[];reviewIds=wrong?new Set(wrong):null;pool=set.passages.filter(p=>!reviewIds||p.items.some(q=>reviewIds.has(q.id)));show('quiz');render()}
+function render(){submitted=false;const p=pool[pos];$('setName').textContent=active.name+(reviewIds?' · 错题复习':'');$('progress').textContent=`第 ${pos+1} / ${pool.length} 篇 · ${p.kind==='cloze'?'综合填空':'词语替换'} · 每篇5题`;$('barFill').style.width=`${pos/pool.length*100}%`;$('passageTitle').textContent=p.title;$('instructions').textContent=p.kind==='cloze'?'根据短文内容和上下文，从每题四个选项中选出最恰当的词语。':'根据短文内容和上下文，替换每个画线词语中的一个字，并输入完整的正确词语。';$('passageText').replaceChildren();const parts=p.text.split(/(\{\{\d+\}\})/);for(const part of parts){const m=part.match(/^\{\{(\d+)\}\}$/);if(!m){$('passageText').append(document.createTextNode(part));continue}const n=Number(m[1]),span=document.createElement('span');span.className=p.kind==='cloze'?'blank':'wrongword';span.textContent=p.kind==='cloze'?`（${n}）____`:`（${n}）${p.items[n-1].wrong}`;$('passageText').append(span)}$('items').replaceChildren();p.items.forEach((q,i)=>{const div=document.createElement('div');div.className='question';const title=document.createElement('h3');title.textContent=`第${i+1}题${reviewIds?.has(q.id)?' · 上次错题':''}`;div.append(title);if(p.kind==='cloze'){const opts=document.createElement('div');opts.className='options';q.options.forEach((opt,j)=>{const label=document.createElement('label');label.className='option';const input=document.createElement('input');input.type='radio';input.name=q.id;input.value=opt;input.required=true;label.append(input,document.createTextNode(String.fromCharCode(65+j)+'. '+opt));opts.append(label)});div.append(opts)}else{const label=document.createElement('label');label.textContent=`画线词语：${q.wrong} → `;label.htmlFor=q.id;const input=document.createElement('input');input.id=q.id;input.name=q.id;input.type='text';input.required=true;input.autocomplete='off';input.setAttribute('aria-label',`第${i+1}题完整正确词语`);div.append(label,input)}const fb=document.createElement('div');fb.id='fb-'+q.id;fb.hidden=true;div.append(fb);$('items').append(div)});$('submit').hidden=false;$('next').hidden=true;$('next').textContent=pos===pool.length-1?'查看成绩 →':'下一篇 →';$('formError').textContent=''}
+$('answerForm').onsubmit=e=>{e.preventDefault();if(submitted)return;const p=pool[pos],fd=new FormData($('answerForm'));const values=p.items.map(q=>String(fd.get(q.id)||'').trim().normalize('NFKC').replace(/\s/g,''));if(values.some(v=>!v)){$('formError').textContent='请完成本篇5题后再提交。';return}submitted=true;p.items.forEach((q,i)=>{const value=values[i],ok=[q.answer,...(q.accepted||[])].includes(value);responses.push({q,value,ok,kind:p.kind,title:p.title});const fb=$('fb-'+q.id);fb.hidden=false;fb.className='feedback '+(ok?'correct':'incorrect');fb.textContent=`${ok?'✓ 正确':'✗ 需订正'}　你的答案：${value}　正确答案：${q.answer}。${q.why}${q.extension?'【常用延伸词】':''}`});$('items').querySelectorAll('input').forEach(el=>el.disabled=true);$('submit').hidden=true;$('next').hidden=false;$('next').focus()};
+$('next').onclick=()=>{if(!submitted)return;if(++pos<pool.length){render();window.scrollTo(0,0)}else finish()};
+function finish(){show('results');const wrong=responses.filter(r=>!r.ok),right=responses.length-wrong.length;$('resultTitle').textContent=active.name+(reviewIds?' · 复习结果':'');$('score').textContent=`${right} / ${responses.length}`;const counts=k=>responses.filter(r=>r.kind===k);$('breakdown').textContent=['cloze','replace'].map(k=>`${k==='cloze'?'综合填空':'词语替换'} ${counts(k).filter(r=>r.ok).length}/${counts(k).length}`).join(' · ')+' · 此处按题数统计正确率';$('review').replaceChildren();if(!wrong.length)$('review').textContent='本次全部答对。可返回单元继续另一套练习。';wrong.forEach(r=>{const div=document.createElement('div');div.className='feedback incorrect';div.textContent=`《${r.title}》 你的答案：${r.value} → ${r.q.answer}。${r.q.why}${r.q.extension?'【常用延伸词】':''}`;$('review').append(div)});if(!reviewIds){const record=read();record[active.id]={right,total:responses.length,wrong:wrong.map(r=>r.q.id)};save(record)}$('retry').disabled=!wrong.length;$('retry').onclick=()=>start(active,wrong.map(r=>r.q.id))}
+$('back').onclick=home;$('returnHome').onclick=home;Promise.resolve([
+  {
+    "id": "u1-1",
+    "unit": 1,
+    "name": "单元一A套 基础应用",
+    "passages": [
+      {
+        "title": "让招聘更公平",
+        "text": "社区中心计划为有{{1}}的求职者举办招聘会。筹备组认为，让每个人获得平等的工作机会，大家都{{2}}。几家公司决定{{3}}符合条件的求职者，并在招聘说明中明确承诺{{4}}。工作人员也提醒求职者，签约前应了解自己的{{5}}，仔细阅读薪酬和休假条款。",
+        "kind": "cloze",
+        "items": [
+          {
+            "id": "u1-1-01",
+            "answer": "残障",
+            "wrong": "",
+            "options": [
+              "残障",
+              "残缺",
+              "残余",
+              "残损"
+            ],
+            "why": "“残障”用于说明人的身体或心智能力障碍；其余词不适合指这类求职者。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-02",
+            "answer": "责无旁贷",
+            "wrong": "",
+            "options": [
+              "理所当然",
+              "责无旁贷",
+              "无能为力",
+              "置身事外"
+            ],
+            "why": "“责无旁贷”强调应尽的责任不能推给别人，呼应“大家都”。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-03",
+            "answer": "聘请",
+            "wrong": "",
+            "options": [
+              "申请",
+              "拜访",
+              "聘请",
+              "请假"
+            ],
+            "why": "公司招用合适人员工作，用“聘请”。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-04",
+            "answer": "同工同酬",
+            "wrong": "",
+            "options": [
+              "各取所需",
+              "各有所长",
+              "自食其力",
+              "同工同酬"
+            ],
+            "why": "同样的工作获得同样报酬，指“同工同酬”。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-05",
+            "answer": "权利",
+            "wrong": "",
+            "options": [
+              "权势",
+              "权利",
+              "权力",
+              "威力"
+            ],
+            "why": "“权利”是依法或依规定享有的资格；“权力”指支配或管理的力量。",
+            "extension": false
+          }
+        ]
+      },
+      {
+        "title": "天桥下的老人",
+        "text": "雨后，我们在天桥下遇到一名伸着破碗向路人讨食物的{{1}}。他的衣服被泥水弄得十分{{2}}，裤脚破了，双腿几乎{{3}}地露在外面。有人只凭他的外表就认定他是骗子，甚至{{4}}地嘲笑他。老师提醒我们：衣衫{{5}}只能反映他眼下的处境，不能证明他的人品。",
+        "kind": "cloze",
+        "items": [
+          {
+            "id": "u1-1-06",
+            "answer": "乞丐",
+            "wrong": "",
+            "options": [
+              "乞丐",
+              "顾客",
+              "观众",
+              "乘客"
+            ],
+            "why": "结合下文贫困、求助的处境，这里应选“乞丐”。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-07",
+            "answer": "肮脏",
+            "wrong": "",
+            "options": [
+              "陈旧",
+              "单薄",
+              "肮脏",
+              "朴素"
+            ],
+            "why": "泥水使衣服变脏，重点是污秽，用“肮脏”。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-08",
+            "answer": "赤裸裸",
+            "wrong": "",
+            "options": [
+              "慢吞吞",
+              "赤裸裸",
+              "静悄悄",
+              "兴冲冲"
+            ],
+            "why": "“赤裸裸”表示完全裸露，照应裤脚破损。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-09",
+            "answer": "肆无忌惮",
+            "wrong": "",
+            "options": [
+              "小心翼翼",
+              "彬彬有礼",
+              "无微不至",
+              "肆无忌惮"
+            ],
+            "why": "没有顾忌地讥讽他人，符合“肆无忌惮”；下一句老师的提醒也表明这种行为不当。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-10",
+            "answer": "褴褛",
+            "wrong": "",
+            "options": [
+              "华丽",
+              "褴褛",
+              "鲜艳",
+              "整齐"
+            ],
+            "why": "“衣衫褴褛”指衣服破烂，不能据此判断品格。",
+            "extension": false
+          }
+        ]
+      },
+      {
+        "title": "一把伞的温度",
+        "text": "那天我刚搬来，还不{{1}}附近的诊所怎么走。忽然下起大雨，一位脚穿锃亮皮鞋的老伯走来，把伞移到我头上。他擦去鞋面的雨水，笑说自己这双{{2}}已穿了多年。他的话语不多，却让我感到他为人{{3}}。交谈时，他告诉我，自己每星期都会到医院探望出生还不到一个月的住院{{4}}。{{5}}间，我明白了：帮助别人并不一定要做惊天动地的大事。",
+        "kind": "cloze",
+        "items": [
+          {
+            "id": "u1-1-11",
+            "answer": "晓得",
+            "wrong": "",
+            "options": [
+              "理解",
+              "记忆",
+              "晓得",
+              "熟练"
+            ],
+            "why": "“晓得”表示知道；刚搬来、不知道诊所怎么走，符合语境。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-12",
+            "answer": "革履",
+            "wrong": "",
+            "options": [
+              "长靴",
+              "革履",
+              "拖鞋",
+              "凉鞋"
+            ],
+            "why": "“革履”就是皮鞋，前文“锃亮皮鞋”明确了材质。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-13",
+            "answer": "质朴",
+            "wrong": "",
+            "options": [
+              "繁华",
+              "华贵",
+              "质朴",
+              "贫乏"
+            ],
+            "why": "话语不多、待人真诚而不加修饰，可见为人质朴。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-14",
+            "answer": "婴儿",
+            "wrong": "",
+            "options": [
+              "旅客",
+              "婴儿",
+              "职员",
+              "顾客"
+            ],
+            "why": "出生不到一个月，属于婴儿；其余身份没有年龄依据。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-15",
+            "answer": "蓦然",
+            "wrong": "",
+            "options": [
+              "逐渐",
+              "一直",
+              "反复",
+              "蓦然"
+            ],
+            "why": "“蓦然间”表示突然，强调某一刻的领悟。",
+            "extension": false
+          }
+        ]
+      },
+      {
+        "title": "从争执到协商",
+        "text": "一家企业迟迟没有发放工资，员工的生活陷入困难。作为{{1}}，公司负责人应依约支付报酬。双方为此发生劳资{{2}}。调解员提醒大家，领取应得工资是员工的{{3}}，任何一方都不应以辱骂代替沟通。经过协商，公司拟定还款计划，员工眼前的经济困难才逐步得到{{4}}。社区人员也给焦虑的员工送去{{5}}，耐心倾听他们的担忧。",
+        "kind": "replace",
+        "items": [
+          {
+            "id": "u1-1-16",
+            "answer": "雇主",
+            "wrong": "雇员",
+            "options": [],
+            "why": "负责人是雇用员工的一方，应为“雇主”；“雇员”是受雇工作的人。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-17",
+            "answer": "纠纷",
+            "wrong": "纠缠",
+            "options": [],
+            "why": "“劳资纠纷”指雇主和员工之间的争执；改“缠”为“纷”。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-18",
+            "answer": "权利",
+            "wrong": "权力",
+            "options": [],
+            "why": "依法领取工资是“权利”，不是支配他人的“权力”；改“力”为“利”。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-19",
+            "answer": "缓解",
+            "wrong": "缓刑",
+            "options": [],
+            "why": "困难逐步减轻应为“缓解”；“缓刑”属于刑罚用语，改“刑”为“解”。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-20",
+            "answer": "呵护",
+            "wrong": "呵斥",
+            "options": [],
+            "why": "下文是关怀与倾听，应为“呵护”；“呵斥”指大声责骂，改“斥”为“护”。",
+            "extension": false
+          }
+        ]
+      },
+      {
+        "title": "社区的一封求助信",
+        "text": "居民发现桥下住着一位老人，便向社区中心{{1}}帮助。负责家访的社工是一位衣着简单、为人{{2}}的女士。她先了解老人的需要，再把物资送到他手中，从不把困难中的人当成低人一等的人来{{3}}。她也提醒围观者，应{{4}}老人的个人意愿。老人暂时不愿入住安老院，她便继续{{5}}他的情况，定期探望。",
+        "kind": "replace",
+        "items": [
+          {
+            "id": "u1-1-21",
+            "answer": "祈求",
+            "wrong": "祈福",
+            "options": [],
+            "why": "这里需要“请求帮助”的动词“祈求”；“祈福”不能直接带“帮助”作宾语，改“福”为“求”。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-22",
+            "answer": "质朴",
+            "wrong": "质问",
+            "options": [],
+            "why": "描述为人简单、真诚、不矫饰，应为“质朴”；“质问”是提出责问，改“问”为“朴”。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-23",
+            "answer": "轻视",
+            "wrong": "轻信",
+            "options": [],
+            "why": "把人看得低下是“轻视”；“轻信”是轻易相信，改“信”为“视”。",
+            "extension": true
+          },
+          {
+            "id": "u1-1-24",
+            "answer": "尊重",
+            "wrong": "尊贵",
+            "options": [],
+            "why": "“尊重个人意愿”表示重视他人的选择；“尊贵”是身份高贵，改“贵”为“重”。",
+            "extension": true
+          },
+          {
+            "id": "u1-1-25",
+            "answer": "关注",
+            "wrong": "关照",
+            "options": [],
+            "why": "“关注情况”指持续留意，照应定期探望；“关照”在此不能直接搭配“情况”，改“照”为“注”。",
+            "extension": true
+          }
+        ]
+      },
+      {
+        "title": "义工不是办案人员",
+        "text": "有人怀疑求助者隐瞒了收入，竟要求义工像{{1}}一样追查其行踪。组长说，核实资料要按程序进行，不能凭{{2}}给人定罪。帮助别人的出发点应是{{3}}，不能借机羞辱他人。义工需要认真{{4}}对方的处境，再决定如何支援。组长也提醒大家，给予帮助应保护受助者的{{5}}，让他有信心重新生活。",
+        "kind": "replace",
+        "items": [
+          {
+            "id": "u1-1-26",
+            "answer": "侦探",
+            "wrong": "侦查",
+            "options": [],
+            "why": "“像……一样”这里应放指人的名词“侦探”；“侦查”是行动，改“查”为“探”。",
+            "extension": false
+          },
+          {
+            "id": "u1-1-27",
+            "answer": "猜测",
+            "wrong": "猜谜",
+            "options": [],
+            "why": "没有证据而作推想是“猜测”；“猜谜”是猜谜语，改“谜”为“测”。“猜想”也符合语境，可接受。",
+            "extension": true,
+            "accepted": [
+              "猜想"
+            ]
+          },
+          {
+            "id": "u1-1-28",
+            "answer": "善意",
+            "wrong": "善后",
+            "options": [],
+            "why": "愿意帮助别人的好意是“善意”；“善后”是处理事后的事务，改“后”为“意”。“善心”也可接受。",
+            "extension": true,
+            "accepted": [
+              "善心"
+            ]
+          },
+          {
+            "id": "u1-1-29",
+            "answer": "了解",
+            "wrong": "了结",
+            "options": [],
+            "why": "弄清处境是“了解”；“了结”表示解决或结束，改“结”为“解”。",
+            "extension": true
+          },
+          {
+            "id": "u1-1-30",
+            "answer": "尊严",
+            "wrong": "尊长",
+            "options": [],
+            "why": "此处要保护的是人的人格尊严；“尊长”指地位或辈分较高的人，改“长”为“严”。",
+            "extension": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "u1-2",
+    "unit": 1,
+    "name": "单元一B套 迁移巩固",
+    "passages": [
+      {
+        "title": "一场招聘说明会",
+        "text": "新学期，学校邀请企业代表与毕业生交流。一位创办企业多年的{{1}}介绍，公司不会因求职者行动不便而拒绝录用。双方若对薪酬或休假发生{{2}}，应先核实合同。公司还成立支援小组，为有需要的员工提供{{3}}，而不是讥讽他们的困难。这些措施有助于{{4}}员工的焦虑。代表最后强调，工作机会应向具备能力的{{5}}人士开放。",
+        "kind": "cloze",
+        "items": [
+          {
+            "id": "u1-2-01",
+            "answer": "雇主",
+            "wrong": "",
+            "options": [
+              "雇主",
+              "雇员",
+              "顾客",
+              "患者"
+            ],
+            "why": "下文介绍公司用人政策，发言者代表雇用人的一方，用“雇主”。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-02",
+            "answer": "纠纷",
+            "wrong": "",
+            "options": [
+              "交流",
+              "纠纷",
+              "共识",
+              "协议"
+            ],
+            "why": "下文需要核实合同，指双方发生争执，用“纠纷”。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-03",
+            "answer": "呵护",
+            "wrong": "",
+            "options": [
+              "呵斥",
+              "责难",
+              "呵护",
+              "惩罚"
+            ],
+            "why": "与“不是讥讽”相呼应，应给予爱护与关怀。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-04",
+            "answer": "缓解",
+            "wrong": "",
+            "options": [
+              "增加",
+              "掩饰",
+              "积累",
+              "缓解"
+            ],
+            "why": "支援措施减轻焦虑，用“缓解”。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-05",
+            "answer": "残障",
+            "wrong": "",
+            "options": [
+              "残破",
+              "残障",
+              "残存",
+              "残余"
+            ],
+            "why": "与前文行动不便、平等就业的主题相呼应，应用“残障人士”。",
+            "extension": false
+          }
+        ]
+      },
+      {
+        "title": "帮助不等于盘问",
+        "text": "义工小林看见老人双膝着地，{{1}}在路旁。他双手合十，低声{{2}}路人给一点食物。有个旁观者要求小林调查老人的所有经历，小林说：“我不是{{3}}，需要核实的资料会交给负责机构。”另一人竟说，受助者都是低{{4}}的人。小林立即制止他：“真正的{{5}}应当建立在尊重之上。”",
+        "kind": "cloze",
+        "items": [
+          {
+            "id": "u1-2-06",
+            "answer": "跪",
+            "wrong": "",
+            "options": [
+              "蹲",
+              "站",
+              "跪",
+              "躺"
+            ],
+            "why": "双膝着地明确指向“跪”。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-07",
+            "answer": "祈求",
+            "wrong": "",
+            "options": [
+              "祈求",
+              "命令",
+              "质问",
+              "宣布"
+            ],
+            "why": "双手合十、低声请求，语气是“祈求”。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-08",
+            "answer": "侦探",
+            "wrong": "",
+            "options": [
+              "顾客",
+              "乘客",
+              "侦探",
+              "患者"
+            ],
+            "why": "前文要求调查经历，侦探的工作性质与此相应。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-09",
+            "answer": "贱",
+            "wrong": "",
+            "options": [
+              "贵",
+              "贱",
+              "矮",
+              "高"
+            ],
+            "why": "“低贱”指地位卑下，是旁观者应被纠正的歧视说法。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-10",
+            "answer": "仁慈",
+            "wrong": "",
+            "options": [
+              "严厉",
+              "傲慢",
+              "冷淡",
+              "仁慈"
+            ],
+            "why": "善待、怜悯有困难者，应为仁慈，并且需要尊重。",
+            "extension": false
+          }
+        ]
+      },
+      {
+        "title": "小店里的一次谈话",
+        "text": "医师一边整理药柜，一边跟我谈起义诊。他说，有些病人会与他{{1}}地交谈，把心里的难处说出来。只要知道邻里患病，他总会亲自探望，因此大家早已{{2}}他一向热心助人。一天，一个年轻人受助后竟要{{3}}致谢，医师急忙把他扶住：“感激不必用这种方式表达。”医师{{4}}的谈吐让我很受触动。我{{5}}意识到，善良也可以在平凡的小店里生根。",
+        "kind": "cloze",
+        "items": [
+          {
+            "id": "u1-2-11",
+            "answer": "推心置腹",
+            "wrong": "",
+            "options": [
+              "虚张声势",
+              "推心置腹",
+              "肆无忌惮",
+              "装腔作势"
+            ],
+            "why": "向对方坦诚说出内心的难处，是推心置腹。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-12",
+            "answer": "晓得",
+            "wrong": "",
+            "options": [
+              "晓得",
+              "打听",
+              "猜测",
+              "询问"
+            ],
+            "why": "“早已晓得”表示已经知道，照应长期热心探望的事实。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-13",
+            "answer": "叩头",
+            "wrong": "",
+            "options": [
+              "拍手",
+              "挥手",
+              "叩头",
+              "握手"
+            ],
+            "why": "医师急忙扶住他，呼应下跪磕头致谢的动作。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-14",
+            "answer": "质朴",
+            "wrong": "",
+            "options": [
+              "奢华",
+              "壮丽",
+              "浮夸",
+              "质朴"
+            ],
+            "why": "话语简单真诚、不加修饰，称为质朴。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-15",
+            "answer": "蓦然",
+            "wrong": "",
+            "options": [
+              "始终",
+              "蓦然",
+              "逐步",
+              "向来"
+            ],
+            "why": "表示在某个瞬间突然领悟，应选“蓦然”。",
+            "extension": false
+          }
+        ]
+      },
+      {
+        "title": "义工培训的第一课",
+        "text": "培训员先提醒大家，维护弱势者的{{1}}是服务的重要原则。探访时，要用温和的语言{{2}}对方，不应责备他们“为什么连生活也安排不好”。如有合约争执，应交由合资格人员处理{{3}}，而不是在网上公开争吵。一位{{4}}也到场分享如何为员工安排合理工时。他认为，有效的支援能{{5}}员工的压力，让他们更安心地工作。",
+        "kind": "replace",
+        "items": [
+          {
+            "id": "u1-2-16",
+            "answer": "权利",
+            "wrong": "权力",
+            "options": [],
+            "why": "弱势者依法享有的是权利；改“力”为“利”。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-17",
+            "answer": "呵护",
+            "wrong": "呵斥",
+            "options": [],
+            "why": "温和的语言和不责备的态度体现呵护；“呵斥”恰好相反，改“斥”为“护”。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-18",
+            "answer": "纠纷",
+            "wrong": "纠缠",
+            "options": [],
+            "why": "合约争执属于纠纷，改“缠”为“纷”。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-19",
+            "answer": "雇主",
+            "wrong": "雇员",
+            "options": [],
+            "why": "为员工安排工时的是雇用人员的一方，改“员”为“主”。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-20",
+            "answer": "缓解",
+            "wrong": "缓刑",
+            "options": [],
+            "why": "压力应得到缓解；改“刑”为“解”。",
+            "extension": false
+          }
+        ]
+      },
+      {
+        "title": "为帮助划清界线",
+        "text": "救援人员赶到时，受困者正{{1}}有人尽快把孩子救出去。记者本想上前{{2}}救援经过，队员却请他先让出通道。现场一名男子只顾拿手机拍摄，丝毫不{{3}}孩子是否惊恐。救援结束后，记者向家属取得同意，才拍下他们{{4}}的笑容。报道也特别{{5}}读者，不要为了拍照而妨碍救援。",
+        "kind": "replace",
+        "items": [
+          {
+            "id": "u1-2-21",
+            "answer": "祈求",
+            "wrong": "祈福",
+            "options": [],
+            "why": "“祈求有人尽快救人”是请求；“祈福”不能直接引出这一请求，改“福”为“求”。“祈望”也符合此句，可接受。",
+            "extension": false,
+            "accepted": [
+              "祈望"
+            ]
+          },
+          {
+            "id": "u1-2-22",
+            "answer": "了解",
+            "wrong": "了结",
+            "options": [],
+            "why": "记者想弄清救援经过，应为“了解”，改“结”为“解”。",
+            "extension": true
+          },
+          {
+            "id": "u1-2-23",
+            "answer": "关心",
+            "wrong": "关门",
+            "options": [],
+            "why": "这里指是否留意孩子的感受，应为“关心”，改“门”为“心”。",
+            "extension": true
+          },
+          {
+            "id": "u1-2-24",
+            "answer": "欣慰",
+            "wrong": "欣赏",
+            "options": [],
+            "why": "危险解除后感到安慰，露出的是“欣慰”的笑容；改“赏”为“慰”。",
+            "extension": true
+          },
+          {
+            "id": "u1-2-25",
+            "answer": "提醒",
+            "wrong": "提拔",
+            "options": [],
+            "why": "让读者注意不要妨碍救援是“提醒”；“提拔”是提升职位，改“拔”为“醒”。",
+            "extension": true
+          }
+        ]
+      },
+      {
+        "title": "善意需要方法",
+        "text": "受助的阿伯说，自己曾因穿得破旧而遭人{{1}}，所以不敢到中心求助。社工没有扮成{{2}}去盘问他，而是耐心倾听。阿伯穿着简单，谈吐也很{{3}}，他说自己只希望找到一份力所能及的工作。社工答应协助，并{{4}}他的选择，没有强迫他接受不愿意的安排。双方约好下周再见面，继续商量如何{{5}}眼前的问题。",
+        "kind": "replace",
+        "items": [
+          {
+            "id": "u1-2-26",
+            "answer": "轻视",
+            "wrong": "轻信",
+            "options": [],
+            "why": "由于穿着破旧而被看不起，是“轻视”，改“信”为“视”。",
+            "extension": true
+          },
+          {
+            "id": "u1-2-27",
+            "answer": "侦探",
+            "wrong": "侦查",
+            "options": [],
+            "why": "扮成的人物应为“侦探”；“侦查”是行动，改“查”为“探”。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-28",
+            "answer": "质朴",
+            "wrong": "质问",
+            "options": [],
+            "why": "形容谈吐简单真诚，应为“质朴”；“质问”是责问的行为，改“问”为“朴”。",
+            "extension": false
+          },
+          {
+            "id": "u1-2-29",
+            "answer": "尊重",
+            "wrong": "尊贵",
+            "options": [],
+            "why": "“尊重选择”是认可对方自主决定；改“贵”为“重”。",
+            "extension": true
+          },
+          {
+            "id": "u1-2-30",
+            "answer": "解决",
+            "wrong": "解散",
+            "options": [],
+            "why": "问题需要“解决”；“解散”多用于组织、队伍等，改“散”为“决”。",
+            "extension": true
+          }
+        ]
+      }
+    ]
+  }
+]).then(data=>{bank=data;home()}).catch(()=>{$('loadError').hidden=false;$('loadError').textContent='题库暂时无法载入，请刷新页面后重试。'});
+</script></body></html>
