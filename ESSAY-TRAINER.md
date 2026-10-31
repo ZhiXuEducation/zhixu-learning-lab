@@ -24,3 +24,7 @@ The public app identifies year/question number and asks learners to consult lega
 ## Validation
 
 JavaScript syntax checks; browser completion of all 20 questions with one intentional wrong answer (19/20); correct/incorrect explanations; missing-answer guard; retry of single wrong answer (1/1). Browser progress persistence and responsive layout checked separately before publishing.
+
+## Embedded prompt revision
+
+At the user’s request, four substantially rephrased teaching prompts are now embedded and marked as adaptations, not verbatim official questions. Learners no longer need separate papers. Preserve the exclusivity test in 2020 Q4 and prerequisite test in 2021 Q4. Do not describe paraphrasing as legal clearance.
