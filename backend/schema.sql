@@ -1,0 +1,159 @@
+-- Additive change; existing zx_profiles, courses, enrollments and policies are preserved.
+begin;
+create table public.zx_students (
+ id uuid primary key default gen_random_uuid(),
+ student_code text unique not null check (student_code ~ '^ZX[0-9A-F]{12}$'),
+ display_name text not null check(length(trim(display_name)) between 1 and 80),
+ grade text not null check(grade in ('P6','S1','S2','S3','S4')),
+ active boolean not null default true,
+ created_at timestamptz not null default now()
+);
+create table public.zx_student_courses (
+ student_id uuid not null references public.zx_students(id) on delete cascade,
+ course_id text not null references public.zx_courses(id),
+ primary key(student_id,course_id)
+);
+create index zx_student_courses_course_idx on public.zx_student_courses(course_id);
+create table zx_private.student_credentials (
+ student_id uuid primary key references public.zx_students(id) on delete cascade,
+ salt text not null, pin_hash text not null
+);
+create table zx_private.student_sessions (
+ token_hash text primary key, student_id uuid not null references public.zx_students(id) on delete cascade,
+ expires_at timestamptz not null default now()+interval '8 hours'
+);
+create index student_sessions_student_idx on zx_private.student_sessions(student_id);
+create index student_sessions_expiry_idx on zx_private.student_sessions(expires_at);
+create table zx_private.login_limits (
+ bucket text primary key, started_at timestamptz not null, attempts integer not null
+);
+create table zx_private.course_content (
+ asset_id text primary key, allowed_courses text[] not null, html text not null
+);
+alter table public.zx_students enable row level security;
+alter table public.zx_student_courses enable row level security;
+alter table zx_private.student_credentials enable row level security;
+alter table zx_private.student_sessions enable row level security;
+alter table zx_private.login_limits enable row level security;
+alter table zx_private.course_content enable row level security;
+revoke all on public.zx_students,public.zx_student_courses from public,anon,authenticated;
+revoke all on zx_private.student_credentials,zx_private.student_sessions,zx_private.login_limits,zx_private.course_content from public,anon,authenticated;
+grant select on public.zx_students,public.zx_student_courses to authenticated;
+create policy students_admin_read on public.zx_students for select to authenticated using(zx_private.current_role()='admin');
+create policy student_courses_admin_read on public.zx_student_courses for select to authenticated using(zx_private.current_role()='admin');
+grant usage on schema zx_private to service_role;
+grant all on public.zx_students,public.zx_student_courses,zx_private.student_credentials,zx_private.student_sessions,zx_private.login_limits,zx_private.course_content to service_role;
+
+-- Only the server may call this RPC. It is SECURITY INVOKER, never a public privilege bypass.
+create function public.zx_student_gateway(op text, payload jsonb default '{}') returns jsonb
+language plpgsql security invoker set search_path='' as $$
+declare
+ actor uuid; sid uuid; s public.zx_students; c text; courses text[];
+ n integer; t timestamptz := clock_timestamp(); is_admin boolean := false; result jsonb;
+begin
+ if payload ? 'actor' then
+  actor := (payload->>'actor')::uuid;
+  select exists(select 1 from public.zx_profiles where id=actor and role='admin' and active) into is_admin;
+ end if;
+ if op='reserve' then
+  -- A global bound also limits unknown-account probes and distributed guessing.
+  insert into zx_private.login_limits values('global',t,1)
+   on conflict(bucket) do update set
+   attempts=case when login_limits.started_at < t-interval '15 minutes' then 1 else login_limits.attempts+1 end,
+   started_at=case when login_limits.started_at < t-interval '15 minutes' then t else login_limits.started_at end
+   returning attempts into n;
+  if n>100 then return '{"limited":true}'; end if;
+  select * into s from public.zx_students where student_code=payload->>'code';
+  if not found then return '{}'; end if;
+  insert into zx_private.login_limits values(s.id::text,t,1)
+   on conflict(bucket) do update set
+   attempts=case when login_limits.started_at < t-interval '15 minutes' then 1 else login_limits.attempts+1 end,
+   started_at=case when login_limits.started_at < t-interval '15 minutes' then t else login_limits.started_at end
+   returning attempts into n;
+  if n>5 then return '{"limited":true}'; end if;
+  insert into zx_private.login_limits values(s.id::text||':day',t,1)
+   on conflict(bucket) do update set
+   attempts=case when login_limits.started_at < t-interval '24 hours' then 1 else login_limits.attempts+1 end,
+   started_at=case when login_limits.started_at < t-interval '24 hours' then t else login_limits.started_at end
+   returning attempts into n;
+  if n>10 then return '{"limited":true}'; end if;
+  if not s.active then return '{}'; end if;
+  select jsonb_build_object('id',s.id,'salt',salt,'pin_hash',pin_hash) into result
+   from zx_private.student_credentials where student_id=s.id;
+  return coalesce(result,'{}');
+ elsif op='login' then
+  sid := (payload->>'id')::uuid;
+  if not exists(select 1 from public.zx_students where id=sid and active) then raise exception 'denied'; end if;
+  delete from zx_private.login_limits where bucket in (sid::text,sid::text||':day');
+  delete from zx_private.student_sessions where expires_at < t;
+  insert into zx_private.student_sessions(token_hash,student_id) values(payload->>'token_hash',sid);
+  return '{"ok":true}';
+ elsif op='logout' then
+  delete from zx_private.student_sessions where token_hash=payload->>'token_hash';
+  return '{"ok":true}';
+ end if;
+ if not is_admin then
+  select st.* into s from zx_private.student_sessions ss join public.zx_students st on st.id=ss.student_id
+   where ss.token_hash=payload->>'token_hash' and ss.expires_at>t and st.active;
+  if not found then raise exception 'denied'; end if;
+  sid:=s.id;
+ end if;
+ if op='me' then
+  if is_admin then return jsonb_build_object('role','admin'); end if;
+  return jsonb_build_object('role','student','name',s.display_name,'grade',s.grade);
+ elsif op='courses' then
+  select coalesce(jsonb_agg(jsonb_build_object('id',co.id,'title',co.title,'level',co.level) order by co.id),'[]') into result
+   from public.zx_courses co where co.active and (is_admin or exists(select 1 from public.zx_student_courses sc where sc.student_id=sid and sc.course_id=co.id));
+  return result;
+ elsif op='content' then
+  c:=payload->>'asset_id';
+  select jsonb_build_object('html',ct.html) into result from zx_private.course_content ct
+   where ct.asset_id=c and exists(select 1 from public.zx_courses co where co.id=any(ct.allowed_courses) and co.active
+    and (is_admin or exists(select 1 from public.zx_student_courses sc where sc.student_id=sid and sc.course_id=co.id)));
+  if result is null then raise exception 'content unavailable'; end if;
+  return result;
+ end if;
+ if not is_admin then raise exception 'denied'; end if;
+ if op='list' then
+  select coalesce(jsonb_agg(to_jsonb(st)||jsonb_build_object('courses',coalesce((select jsonb_agg(course_id order by course_id) from public.zx_student_courses where student_id=st.id),'[]')) order by st.created_at desc),'[]') into result from public.zx_students st;
+  return result;
+ elsif op='pin-material' then
+  select jsonb_build_object('salt',cr.salt,'pin_hash',cr.pin_hash) into result from zx_private.student_credentials cr where cr.student_id=(payload->>'id')::uuid;
+  if result is null then raise exception 'student not found'; end if;
+  return result;
+ elsif op='reset-pin' then
+  sid:=(payload->>'id')::uuid;
+  update zx_private.student_credentials set salt=payload->>'salt',pin_hash=payload->>'pin_hash' where student_id=sid;
+  if not found then raise exception 'student not found'; end if;
+  delete from zx_private.student_sessions where student_id=sid;
+  delete from zx_private.login_limits where bucket in (sid::text,sid::text||':day');
+  return '{"ok":true}';
+ elsif op in ('create','update') then
+  if payload->>'grade' not in ('P6','S1','S2','S3','S4') or payload->>'grade' is null then raise exception 'invalid grade'; end if;
+  if length(trim(payload->>'name')) not between 1 and 80 or payload->>'name' is null then raise exception 'invalid name'; end if;
+  select array_agg(value) into courses from jsonb_array_elements_text(payload->'courses');
+  if coalesce(cardinality(courses),0)=0 then raise exception 'select a course'; end if;
+  foreach c in array courses loop
+   if not exists(select 1 from public.zx_courses where id=c and active and
+    (id like lower(payload->>'grade')||'-%' or (id='essay-training' and payload->>'grade' like 'S%'))) then raise exception 'invalid course for grade'; end if;
+  end loop;
+  if op='create' then
+   insert into public.zx_students(student_code,display_name,grade) values(payload->>'code',trim(payload->>'name'),payload->>'grade') returning id into sid;
+   insert into zx_private.student_credentials values(sid,payload->>'salt',payload->>'pin_hash');
+  else
+   sid:=(payload->>'id')::uuid;
+   -- Serialize competing administrator edits for this student.
+   perform 1 from public.zx_students where id=sid for update;
+   if not found then raise exception 'student not found'; end if;
+   update public.zx_students set display_name=trim(payload->>'name'),grade=payload->>'grade',active=(payload->>'active')::boolean where id=sid;
+   delete from zx_private.student_sessions where student_id=sid;
+   delete from public.zx_student_courses where student_id=sid;
+  end if;
+  insert into public.zx_student_courses select sid,unnest(courses) on conflict do nothing;
+  return jsonb_build_object('id',sid);
+ end if;
+ raise exception 'unknown operation';
+end $$;
+revoke all on function public.zx_student_gateway(text,jsonb) from public,anon,authenticated;
+grant execute on function public.zx_student_gateway(text,jsonb) to service_role;
+commit;

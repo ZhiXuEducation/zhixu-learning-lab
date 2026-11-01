@@ -1,0 +1,3 @@
+[functions.zhixu-students]
+verify_jwt = false
+# Public student login uses custom scoped sessions. Admin JWTs are checked in the handler.

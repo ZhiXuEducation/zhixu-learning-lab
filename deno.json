@@ -1,0 +1,1 @@
+{"lock":true,"tasks":{"test":"deno test --allow-read --allow-env --allow-net --allow-ffi tests","check":"deno check backend/index.ts"}}
