@@ -7,3 +7,8 @@ backend/psle-revision-data.json
 backend/psle-revision-catalog.json
 backend/psle-updated-private.html
 backend/psle-deploy.sql
+
+backend/psle-reading-data.json
+backend/psle-reading-catalog.json
+backend/psle-reading-combined.json
+backend/psle-reading-private.html
