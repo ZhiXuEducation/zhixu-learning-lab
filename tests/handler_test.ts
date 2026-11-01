@@ -25,10 +25,11 @@ Deno.test('HTTP integration: admin validation, PIN login/reset, course isolation
  async function call(op:string,data:Record<string,unknown>={},auth?:string,student?:string){const headers:Record<string,string>={'Content-Type':'application/json'};if(auth)headers.Authorization='Bearer '+auth;if(student)headers['x-student-token']=student;const r=await handler(new Request('https://test/edge',{method:'POST',headers,body:JSON.stringify({op,...data})}));return {status:r.status,body:await r.json()};}
  assert((await call('list',{},'forged-admin')).status===401);
  assert((await call('list')).status===401);
- const created=await call('create',{name:'学生 <script>',grade:'P6',courses:['p6-standard']},'valid-admin');
+ const created=await call('create',{name:'学生 <script>',username:'StudentOne',grade:'P6',courses:['p6-standard']},'valid-admin');
  assert(created.status===200);assert(/^\d{4}$/.test(created.body.pin));assert(/^ZX[0-9A-F]{12}$/.test(created.body.code));
  const {id,code,pin}=created.body;
  const login=await call('login',{code,pin});assert(login.status===200);
+ const aliasLogin=await call('login',{code:'studentone',pin});assert(aliasLogin.status===200,'English username login failed');
  const token=login.body.token;assert(token.length===64);
  assert((await call('content',{asset_id:'p6-standard'},undefined,token)).status===200);
  assert((await call('content',{asset_id:'s1-higher'},undefined,token)).status!==200);

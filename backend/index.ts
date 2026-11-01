@@ -12,7 +12,8 @@ async function api(path:string,body?:unknown,method='POST') {
  if(!r.ok) {
   const detail=await r.json().catch(()=>({}));
   if(detail.message==='denied') throw new Failure(403,'没有访问权限，账号可能已停用或登录已过期。');
-  if(detail.code==='P0001') throw new Failure(400,'请检查姓名、年级和课程设置。');
+  if(detail.code==='23505') throw new Failure(400,'英文账号已被使用，请换一个。');
+  if(['P0001','23514','22P02'].includes(detail.code)) throw new Failure(400,'请检查姓名、年级和课程设置。');
   throw new Failure(503,'服务暂时不可用，请稍后重试。');
  }
  return r.status===204?null:await r.json();
@@ -48,11 +49,11 @@ export async function handler(req:Request) {
   const op=body.op;
   if(op==='login') {
    const code=String(body.code||'').trim().toUpperCase(), pin=String(body.pin||'');
-   if(!/^ZX[0-9A-F]{12}$/.test(code) || !/^\d{4}$/.test(pin)) throw new Failure(401,'学生编号或 PIN 不正确。');
+   if(!code || code.length>80 || !/^\d{4}$/.test(pin)) throw new Failure(401,'账号或 PIN 不正确。');
    const stored=await rpc('reserve',{code});
    if(stored.limited) throw new Failure(429,'尝试次数过多，请稍后重试或联系老师重设 PIN。');
-   const actual=await pinHash(code,pin,stored.salt||'unknown-student-salt',PEPPER);
-   if(!stored.id || !equalHash(actual,stored.pin_hash||'')) throw new Failure(401,'学生编号或 PIN 不正确。');
+   const actual=await pinHash(stored.code||code,pin,stored.salt||'unknown-student-salt',PEPPER);
+   if(!stored.id || !equalHash(actual,stored.pin_hash||'')) throw new Failure(401,'账号或 PIN 不正确。');
    const token=randomHex();
    await rpc('login',{id:stored.id,token_hash:await digest(token)});
    return reply({token});
@@ -65,8 +66,8 @@ export async function handler(req:Request) {
    if(me.role!=='admin') throw new Failure(403,'需要管理员权限。');
    const code=`ZX${randomHex(6).toUpperCase()}`,pin=randomPin(),salt=randomHex();
    const pin_hash=await pinHash(code,pin,salt,PEPPER);
-   const result=await rpc('create',{name:body.name,grade:body.grade,courses:body.courses,code,salt,pin_hash,...auth});
-   return reply({...result,code,pin});
+   const result=await rpc('create',{name:body.name,username:body.username,grade:body.grade,courses:body.courses,code,salt,pin_hash,...auth});
+   return reply({...result,code,pin,username:body.username?.trim()||code});
   }
   if(op==='reset-pin') {
    const me=await rpc('me',auth);
@@ -78,9 +79,9 @@ export async function handler(req:Request) {
    do {pin=randomPin();} while(equalHash(await pinHash(student.student_code,pin,previous.salt,PEPPER),previous.pin_hash));
    const salt=randomHex(),pin_hash=await pinHash(student.student_code,pin,salt,PEPPER);
    await rpc('reset-pin',{id:student.id,salt,pin_hash,...auth});
-   return reply({code:student.student_code,pin});
+   return reply({code:student.student_code,pin,username:student.username||student.student_code});
   }
-  const payload=op==='update'?{id:body.id,name:body.name,grade:body.grade,active:body.active,courses:body.courses}:
+  const payload=op==='update'?{id:body.id,name:body.name,username:body.username,grade:body.grade,active:body.active,courses:body.courses}:
    op==='content'?{asset_id:body.asset_id}:{};
   return reply(await rpc(op,{...payload,...auth}));
  } catch(e) {

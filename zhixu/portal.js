@@ -35,8 +35,8 @@ function resetEditor(){editor.reset();editor.elements.id.value='';$('editor-titl
 function renderStudents(){
  $('students').replaceChildren();students.forEach(s=>{
   const row=document.createElement('tr');
-  [s.student_number||'—',s.student_code,s.display_name,s.grade==='SECONDARY'?'中学':s.grade,s.courses.map(id=>allCourses.find(c=>c.id===id)?.title||id).join('、'),s.active?'启用':'停用'].forEach(value=>{const td=document.createElement('td');td.textContent=value;row.append(td);});
-  const cell=document.createElement('td');cell.append(button('编辑',async()=>{hidePin();editor.elements.id.value=s.id;editor.elements.name.value=s.display_name;editor.elements.grade.value=s.grade;editor.elements.active.checked=s.active;$('active-label').hidden=false;$('editor-title').textContent='编辑学生';courseOptions(s.courses);editor.scrollIntoView({behavior:'smooth'});}));cell.append(document.createTextNode(' '),button('重设 PIN',async()=>{hidePin();const result=await request('reset-pin',{id:s.id});$('new-code').textContent=`学生编号：${result.code}`;$('new-pin').textContent=`新 PIN：${result.pin}`;$('credentials').hidden=false;message('PIN 已重设，原 PIN 和现有登录已失效。');}));row.append(cell);$('students').append(row);
+  [s.student_number||'—',s.username||s.student_code,s.display_name,s.grade==='SECONDARY'?'中学':s.grade,s.courses.map(id=>allCourses.find(c=>c.id===id)?.title||id).join('、'),s.active?'启用':'停用'].forEach(value=>{const td=document.createElement('td');td.textContent=value;row.append(td);});
+  const cell=document.createElement('td');cell.append(button('编辑',async()=>{hidePin();editor.elements.id.value=s.id;editor.elements.name.value=s.display_name;editor.elements.username.value=s.username||'';editor.elements.grade.value=s.grade;editor.elements.active.checked=s.active;$('active-label').hidden=false;$('editor-title').textContent='编辑学生';courseOptions(s.courses);editor.scrollIntoView({behavior:'smooth'});}));cell.append(document.createTextNode(' '),button('重设 PIN',async()=>{hidePin();const result=await request('reset-pin',{id:s.id});$('new-code').textContent=`英文账号：${result.username||result.code}`;$('new-pin').textContent=`新 PIN：${result.pin}`;$('credentials').hidden=false;message('PIN 已重设，原 PIN 和现有登录已失效。');}));row.append(cell);$('students').append(row);
  });
 }
 async function openCourse(assetId){
@@ -61,10 +61,10 @@ $('admin-login').onsubmit=e=>{e.preventDefault();const f=e.currentTarget;busy(f,
  }).finally(()=>{f.elements.password.value='';});};
 editor.elements.grade.onchange=()=>courseOptions();
 editor.onsubmit=e=>{e.preventDefault();busy(editor,async()=>{
- hidePin();const id=editor.elements.id.value;const payload={name:editor.elements.name.value.trim(),grade:editor.elements.grade.value,active:editor.elements.active.checked,courses:[...editor.querySelectorAll('input[name=course]:checked')].map(i=>i.value)};
+ hidePin();const id=editor.elements.id.value;const payload={name:editor.elements.name.value.trim(),username:editor.elements.username.value.trim(),grade:editor.elements.grade.value,active:editor.elements.active.checked,courses:[...editor.querySelectorAll('input[name=course]:checked')].map(i=>i.value)};
  if(!payload.name || !payload.courses.length)throw Error('请填写姓名并选择至少一个课程。');
  const result=await request(id?'update':'create',{...payload,...(id?{id}:{})});
- if(!id){$('new-code').textContent=`学生编号：${result.code}`;$('new-pin').textContent=`PIN：${result.pin}`;$('credentials').hidden=false;}
+ if(!id){$('new-code').textContent=`英文账号：${result.username||result.code}`;$('new-pin').textContent=`PIN：${result.pin}`;$('credentials').hidden=false;}
  // Keep one-time credentials visible even if the subsequent list refresh fails.
  resetEditor();message(id?'学生资料已更新。':'学生已创建，请记录编号和 PIN。');
  students=await request('list');renderStudents();

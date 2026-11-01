@@ -22,7 +22,7 @@ Deno.test('management UI: scoped course selection, safe rendering, one-time PIN 
  assert(doc.querySelectorAll('#course-options input').length===2);
  editor.elements.grade.value='S1';editor.elements.grade.dispatchEvent(new win.Event('change'));
  assert(doc.querySelectorAll('#course-options input').length===2);
- editor.elements.name.value='示例';(doc.querySelector('#course-options input') as any).checked=true;
+ editor.elements.name.value='示例';editor.elements.username.value='Example';(doc.querySelector('#course-options input') as any).checked=true;
  editor.dispatchEvent(new win.Event('submit',{cancelable:true}));await settle();
  assert(created && save.grade==='S1' && save.courses[0]==='s1-higher');
  assert(doc.getElementById('new-pin')!.textContent!.includes('0007'));
