@@ -1,2 +1,4 @@
 backend/course-content.json
 backend/course-content.sql
+
+backend/report-*.json
