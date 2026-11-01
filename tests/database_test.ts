@@ -24,8 +24,18 @@ Deno.test('database: isolation, administrator checks, courses, throttle, expiry 
  await denied(()=>rpc('create',{actor:'22222222-2222-4222-8222-222222222222',name:'伪管理员'}),'denied');
  await denied(()=>rpc('update',{actor:admin,id,name:'测试',grade:'P6',active:true,courses:['s1-higher']}),'invalid course');
  assert((await rpc('list',{actor:admin})).length===1);
+ await db.exec("reset role;insert into public.zx_courses select 's'||n||'-express','快捷','secondary',true from generate_series(1,4) n; insert into zx_private.course_content select id,array[id],'<p>express</p>' from public.zx_courses where id like '%-express';set role service_role;");
+ const express=['s1-express','s2-express','s3-express','s4-express'];
+ await rpc('update',{actor:admin,id,name:'测试',grade:'SECONDARY',active:true,courses:express});
+ await rpc('login',{id,token_hash:'scope-token'});
+ assert((await rpc('courses',{token_hash:'scope-token'})).length===5,'four express courses plus writing expected');
+ for(const asset_id of express)assert((await rpc('content',{token_hash:'scope-token',asset_id})).html.includes('express'));
+ await denied(()=>rpc('content',{token_hash:'scope-token',asset_id:'s1-higher'}),'content unavailable');
+ await rpc('update',{actor:admin,id,name:'测试',grade:'P6',active:true,courses:['p6-standard']});
+ await db.exec("update public.zx_students set student_number=5 where id='"+id+"';");
+
  await rpc('login',{id,token_hash:'test-token'});
- assert((await rpc('courses',{token_hash:'test-token'})).length===1);
+ assert((await rpc('courses',{token_hash:'test-token'})).length===2);
  assert((await rpc('content',{token_hash:'test-token',asset_id:'p6-standard'})).html.includes('primary'));
  await denied(()=>rpc('content',{token_hash:'test-token',asset_id:'s1-higher'}),'content unavailable');
  await denied(()=>rpc('list',{token_hash:'test-token'}),'denied');

@@ -19,7 +19,7 @@ Deno.test('management UI: scoped course selection, safe rendering, one-time PIN 
  assert(!(doc.getElementById('admin') as any).hidden);
  assert(doc.querySelectorAll('#students img').length===0,'unsafe student name rendering');
  const editor=doc.getElementById('student-editor') as any;
- assert(doc.querySelectorAll('#course-options input').length===1);
+ assert(doc.querySelectorAll('#course-options input').length===2);
  editor.elements.grade.value='S1';editor.elements.grade.dispatchEvent(new win.Event('change'));
  assert(doc.querySelectorAll('#course-options input').length===2);
  editor.elements.name.value='示例';(doc.querySelector('#course-options input') as any).checked=true;

@@ -27,15 +27,15 @@ function button(label,action){const b=document.createElement('button');b.textCon
 function hidePin(){ $('new-code').textContent='';$('new-pin').textContent='';$('credentials').hidden=true; }
 function courseOptions(selected=[]){
  $('course-options').replaceChildren();const grade=editor.elements.grade.value.toLowerCase();
- allCourses.filter(c=>c.id.startsWith(grade+'-') || (grade.startsWith('s')&&c.id==='essay-training')).forEach(c=>{
-  const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.name='course';input.value=c.id;input.checked=selected.includes(c.id);label.append(input,document.createTextNode(c.title));$('course-options').append(label);
+ allCourses.filter(c=>c.id==='essay-training' || (grade==='p6'?c.id.startsWith('p6-'):c.id.startsWith('s'))).forEach(c=>{
+  const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.name='course';input.value=c.id;input.checked=c.id==='essay-training'||selected.includes(c.id);input.disabled=c.id==='essay-training';label.append(input,document.createTextNode(c.title));$('course-options').append(label);
  });
 }
 function resetEditor(){editor.reset();editor.elements.id.value='';$('editor-title').textContent='新增学生';$('active-label').hidden=true;courseOptions();}
 function renderStudents(){
  $('students').replaceChildren();students.forEach(s=>{
   const row=document.createElement('tr');
-  [s.student_code,s.display_name,s.grade,s.courses.map(id=>allCourses.find(c=>c.id===id)?.title||id).join('、'),s.active?'启用':'停用'].forEach(value=>{const td=document.createElement('td');td.textContent=value;row.append(td);});
+  [s.student_number||'—',s.student_code,s.display_name,s.grade==='SECONDARY'?'中学':s.grade,s.courses.map(id=>allCourses.find(c=>c.id===id)?.title||id).join('、'),s.active?'启用':'停用'].forEach(value=>{const td=document.createElement('td');td.textContent=value;row.append(td);});
   const cell=document.createElement('td');cell.append(button('编辑',async()=>{hidePin();editor.elements.id.value=s.id;editor.elements.name.value=s.display_name;editor.elements.grade.value=s.grade;editor.elements.active.checked=s.active;$('active-label').hidden=false;$('editor-title').textContent='编辑学生';courseOptions(s.courses);editor.scrollIntoView({behavior:'smooth'});}));cell.append(document.createTextNode(' '),button('重设 PIN',async()=>{hidePin();const result=await request('reset-pin',{id:s.id});$('new-code').textContent=`学生编号：${result.code}`;$('new-pin').textContent=`新 PIN：${result.pin}`;$('credentials').hidden=false;message('PIN 已重设，原 PIN 和现有登录已失效。');}));row.append(cell);$('students').append(row);
  });
 }
