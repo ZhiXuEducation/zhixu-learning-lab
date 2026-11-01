@@ -14,6 +14,7 @@ Deno.test('homework: authorization, publication, deadlines, first submission, ov
  grant usage on schema zx_private to service_role;grant select on all tables in schema zx_private,public to service_role;`);
  await db.exec(await Deno.readTextFile(new URL('../backend/report-schema.sql',import.meta.url)));
  await db.exec(await Deno.readTextFile(new URL('../backend/homework-schema.sql',import.meta.url)));
+ await db.exec(await Deno.readTextFile(new URL('../backend/homework-history.sql',import.meta.url)));
  await db.exec(`insert into zx_private.exercise_catalog values('s1-express','set1','A套','[]'),('s1-express','set2','B套','[]');set role service_role;`);
  async function call(op:string,payload:any){return (await db.query<{v:any}>('select public.zx_homework_gateway($1,$2::jsonb) v',[op,JSON.stringify(payload)])).rows[0].v;}
  async function rejects(fn:()=>Promise<unknown>,reason:string){try{await fn()}catch{return}throw Error('expected denial: '+reason)}
@@ -38,6 +39,12 @@ Deno.test('homework: authorization, publication, deadlines, first submission, ov
  const snap=(await db.query<{v:any}>("select zx_private.month_snapshot($1,date_trunc('month',now() at time zone 'Asia/Singapore')::date) v",[S])).rows[0].v;
  assert(snap.homework.assigned===2&&snap.homework.completed===1&&snap.homework.on_time===1&&snap.homework.incomplete===1,'monthly homework totals');
  const deadline=(await db.query<{d:string}>("select to_char(due_at at time zone 'Asia/Singapore','HH24:MI:SS.US') d from zx_private.homework_batches")).rows[0].d;assert(!!deadline);
+ await rejects(()=>call('homework-close',{token_hash:'token',batch_id:B}),'student closing homework');
+ await call('homework-close',{actor:A,batch_id:B});
+ list=await call('homework-list',{token_hash:'token'});assert(list.length===2&&list.every((r:any)=>r.closed_at),'closed history lost');
+ await db.exec(`reset role;insert into zx_private.learning_runs(id,student_id,asset_id,exercise_id,submitted_at,results) values('44444444-4444-4444-8444-444444444447','${S}','s1-express','set2',now()+interval '3 minutes','[]');set role service_role;`);
+ list=await call('homework-list',{token_hash:'token'});assert(!list.find((r:any)=>r.exercise_id==='set2').submitted_at,'submission after closure changed unsubmitted history');
+ await call('homework-publish',{...pub,batch_id:C});await call('homework-cancel',{actor:A,batch_id:C});
  await call('homework-cancel',{actor:A,batch_id:B});assert((await call('homework-list',{token_hash:'token'})).length===0,'cancel not excluded');
  for(const role of ['anon','authenticated']){await db.exec('reset role;set role '+role);await rejects(()=>call('homework-list',{actor:A}),'direct RPC '+role);await rejects(()=>db.query('select * from zx_private.homework_items'),'direct table '+role)}
  }finally{await db.close()}

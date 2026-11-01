@@ -15,7 +15,7 @@ export async function reportHandler(req:Request){
    const token=req.headers.get('x-student-token')||'';if(!/^[a-f0-9]{64}$/.test(token))return reply({error:'请重新登录。'},401);
    payload={token_hash:await digest(token),asset_id:b.asset_id,exercise_id:b.exercise_id,run_id:b.run_id,items:b.items};
   }else{
-   if(!['students','history','load','refresh','save','homework-list','homework-options','homework-publish','homework-cancel'].includes(b.op))return reply({error:'操作不支持。'},400);
+   if(!['students','history','load','refresh','save','homework-list','homework-options','homework-publish','homework-cancel','homework-close'].includes(b.op))return reply({error:'操作不支持。'},400);
    const bearer=req.headers.get('authorization')||'';if(!bearer.startsWith('Bearer '))return reply({error:'需要管理员登录。'},401);
    const user=await fetch(URL+'/auth/v1/user',{headers:{apikey:KEY,Authorization:bearer}});if(!user.ok)return reply({error:'管理员登录已过期，请重新登录。'},401);
    payload={actor:(await user.json()).id,student_id:b.student_id,month:b.month,comment:b.comment,comment_en:b.comment_en,

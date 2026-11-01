@@ -23,3 +23,9 @@ Administrators use `zhixu/homework.html` from the existing portal. Select a cour
 `deno test --allow-read --allow-env tests/homework_test.ts tests/homework_ui_test.ts tests/homework_handler_test.ts tests/reports_test.ts tests/reports_ui_test.ts tests/report_hooks_test.ts tests/security_test.ts`
 
 The course-content launch test uses the generated report-content.json and report-catalog.json already produced by build-reporting.ts (these generated assets are not checked in). It opens the first and last set across all 13 existing assets and checks the actual start event. Database tests run in PGlite with synthetic identities and records. No test student, session or homework is inserted into production.
+
+## History update
+
+Run homework-history.sql once after homework-schema.sql, then redeploy reports.ts and publish homework.html/homework.js. Students default to unfinished work across all months; administrators default to all statuses due in the current Singapore month. Switching to unfinished work clears the month so old overdue work remains visible. Completed and closed work is available through History and the month selector.
+
+Closing a batch preserves all assignments and first submissions up to the closing time, blocks later submissions from rewriting its history, and permits reassignment. Monthly totals still include closed assignments and their unsubmitted records. Cancellation retains its original meaning of removing an erroneous batch from new statistics. No records are deleted.
