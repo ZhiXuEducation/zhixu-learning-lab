@@ -2,3 +2,8 @@ backend/course-content.json
 backend/course-content.sql
 
 backend/report-*.json
+
+backend/psle-revision-data.json
+backend/psle-revision-catalog.json
+backend/psle-updated-private.html
+backend/psle-deploy.sql

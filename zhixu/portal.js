@@ -52,6 +52,7 @@ async function openCourse(assetId,exerciseId=null,homeworkId=null){
   const launch=`<script>window.addEventListener('load',()=>{try{const id=${id};
    if(typeof COURSE!=='undefined'){const s=COURSE.sets.find(s=>String(s.id)===id);if(!s)throw Error();start(s);}
    else if(typeof bank!=='undefined'&&Array.isArray(bank)){const s=bank.find(s=>String(s.id)===id);if(!s)throw Error();start(s);}
+   else if(id.startsWith('psle-rev-')&&typeof window.zxRevisionOpen==='function'){window.zxRevisionOpen(id);}
    else if(typeof BANK!=='undefined'){const s=BANK.sets.find(s=>String(s.id)===id);if(!s)throw Error();start(s.id,allGroups.filter(g=>g.id.startsWith(s.id+'-')),s.title);}
    else if(document.querySelector('[data-start="'+CSS.escape(id)+'"]'))document.querySelector('[data-start="'+CSS.escape(id)+'"]').click();
    else if(id==='all'&&document.getElementById('mode')){document.getElementById('mode').value='all';start();}
