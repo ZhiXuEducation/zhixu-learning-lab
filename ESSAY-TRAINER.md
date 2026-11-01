@@ -1,30 +1,35 @@
 # ZHIXU 作文审题训练器
 
-Entry: `zhixu/essay.html` (linked from learning centre).
-Buildless HTML/CSS/JS, relative asset paths for GitHub Pages. No account, API or server required. Progress is browser-local and may be unavailable in private browsing.
+Buildless GitHub Pages app at `zhixu/essay.html`. No account, API or server required. Three Basic sets, 20 click-only MCQs each, five questions per verified essay task. Advanced remains explicitly unavailable. Learning centre links to trainer.
 
-## Verified sources
+## Verified source ledger
 
-Connected Google Drive, inspected 31 October 2026:
-- `o level paper 1 2020.pdf`, file ID `1P8reT-6vQhjNka2CwjoEfgzk4hX456Sb`
-- `o level paper 1 2021.pdf`, file ID `1qin5aMqsA5-r_DSms8_rBCjkIw4Ecq82`
+Google Drive scans inspected visually, questions on PDF page 2 and publisher reference compositions on PDF page 4. All identify O-Level Higher Chinese, UCLES & MOE and Singapore Asia Publishers. Publisher references are not official SEAB mark schemes.
 
-Both are Higher Chinese, not Express Chinese. PDF page 2 contains Q4/Q5; page 4 contains publisher reference compositions. Footers identify UCLES & MOE and Singapore Asia Publishers. Publisher reference answers are not official SEAB mark schemes.
+| Basic set | Year | Drive file ID | Source tasks |
+|---|---|---|---|
+| 1 | 2020 | 1P8reT-6vQhjNka2CwjoEfgzk4hX456Sb | Q4 rules and social change; Q5 hawker culture nomination |
+| 1 | 2021 | 1qin5aMqsA5-r_DSms8_rBCjkIw4Ecq82 | Q4 language and cultural understanding; Q5 integrated facilities for seniors |
+| 2 | 2022 | 1xeBgR2PB873NYN1tXPw_AhIij5bZm1Nf | Q4 international youth symposium speech; Q5 kiasu mindset |
+| 2 | 2023 | 1GF8H4e1gvh_l-RH66-AgRYMI2ouigvWk | Q4 government/public cooperation in national crises; Q5 environment/economic growth tradeoff |
+| 3 | 2019 | 13Di5nN23w1o8ax5m0nk0iOOw8A2KJK-Y | Q4 governance efficiency and rising expectations; Q5 compulsory outdoor training/resilience |
+| 3 | 2024 | 1d-R9qEDLuJijm7qQwehJ04UcaFFTmWaP | Q4 school speech on information overload; Q5 cross-cultural contact/inclusion |
 
-The four source tasks concern the exclusivity of rules in social improvement, hawker culture heritage nomination, language as a prerequisite to understanding culture, and integrated facilities serving seniors. The 20 MCQs are original teaching analysis tied to these verified tasks; no replacement or fabricated exam prompt is presented.
+Set 1 checked 31 October 2026; new sets checked 1 November 2026. Twelve distinct source essay tasks. Preserve speech genre/audience/context in 2022/2024 Q4. Treat policy dates and survey statements as historical exam contexts, not present-day announcements.
 
-## Copyright approach
+## Content and rights approach
 
-The public app identifies year/question number and asks learners to consult legally held papers. It does not publish full exam prompts, scans, publisher compositions or private Drive links. Drive sharing was not altered. No permission to reproduce was found. SEAB rule checked: https://file.go.gov.sg/registration-information-for-gce-nao-level-school-candidates.pdf . This is an implementation choice to respect the stated restriction, not a claim of legal clearance for all derivative educational uses.
+At the user's request the app embeds substantially rephrased teaching prompts, labeled adaptations, preserving topic and task constraints. No scans, full verbatim official prompts, publisher compositions or private Drive links are published. Drive permissions were not changed. No reproduction permission was found. SEAB rule checked previously: https://file.go.gov.sg/registration-information-for-gce-nao-level-school-candidates.pdf . Rephrasing is not represented as legal clearance. MCQs and explanations are original teaching analysis, not official grading or fabricated original exam questions. Open-ended essays may admit multiple reasonable positions.
 
-## Expansion
+## Data and storage
 
-`essay-data.js` holds 20 questions: year, prompt, skill, options, zero-based answer array, explanation. Five per source prompt. Full set scores out of 20; exact-match scoring for multiple selections. Advanced and Sets 2–5 are explicitly marked unavailable. Future sets should have separate IDs/storage keys and verified source/rights review.
+- `essay-data.js`: original Set 1, unchanged.
+- `essay-more.js`: Sets 2 and 3.
+- `essay.js`: set catalogue, routing and scoring.
+- IDs are 1–20 within each set. Exact-match multi-select scoring, one point per question.
+- Separate storage keys `zhixu-essay-basic-{1,2,3}-v1`. Set 1 keeps its original key and schema so existing progress/results remain readable.
+- Only the selected set is overwritten when restarting/retrying it. A retry result is labeled as a retry, not a 20-point set result. Progress is local to the current browser.
 
-## Validation
+## Validation on 1 November 2026
 
-JavaScript syntax checks; browser completion of all 20 questions with one intentional wrong answer (19/20); correct/incorrect explanations; missing-answer guard; retry of single wrong answer (1/1). Browser progress persistence and responsive layout checked separately before publishing.
-
-## Embedded prompt revision
-
-At the user’s request, four substantially rephrased teaching prompts are now embedded and marked as adaptations, not verbatim official questions. Learners no longer need separate papers. Preserve the exclusivity test in 2020 Q4 and prerequisite test in 2021 Q4. Do not describe paraphrasing as legal clearance.
+JavaScript syntax and data checks; all three 20-question browser flows; Set 1 20/20; Set 2 with deliberate single-answer error and multi-select omission 18/20; wrong-only filter shows two items and retry scores 2/2; Set 3 20/20. Missing-answer guard works. Switching sets and reloading preserves separate answers and results. Mobile and desktop layout inspected. Publish only after checks; verify GitHub Pages deployment and live page after publishing.
