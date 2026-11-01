@@ -17,7 +17,8 @@ async function busy(fn){if(loading)return;loading=true;document.querySelectorAll
 function row(tbody,cells){const tr=document.createElement('tr');cells.forEach(x=>{const td=document.createElement('td');td.textContent=x;tr.append(td)});$(tbody).append(tr);}
 const textAnswer=v=>Array.isArray(v)?v.map(i=>Number.isInteger(i)?'ABCD'[i]:String(i)).join('、'):typeof v==='number'?String(v+1):String(v??'');
 function render(){
- const s=loaded.snapshot,who=students.find(x=>x.id===studentId);$('report').hidden=false;$('student-name').textContent=who?`${who.name}（${who.username||who.number}）`:'';$('report-month').textContent=month;
+ const s=loaded.snapshot,h=s.homework,who=students.find(x=>x.id===studentId);$('report').hidden=false;$('student-name').textContent=who?`${who.name}（${who.username||who.number}）`:'';$('report-month').textContent=month;
+ $('homework-summary').textContent=!h?'此历史版本未含功课统计；请刷新并保存。 / Refresh and save to include homework.':!h.assigned?'本月暂无到期功课 / No homework due this month.':`功课完成 ${h.completed}/${h.assigned}（${Math.round(h.completed/h.assigned*100)}%）· 按时 ${h.on_time}/${h.assigned}（${Math.round(h.on_time/h.assigned*100)}%）· 未完成 ${h.incomplete}（逾期 ${h.overdue}）· 迟交 ${h.late} / Homework completed ${h.completed}/${h.assigned}; on time ${h.on_time}/${h.assigned}; incomplete ${h.incomplete} (overdue ${h.overdue}); late ${h.late}.`;
  $('saved-label').textContent=loaded.saved?'已保存的历史版本':'按现有真实记录生成，尚未保存';
  $('completion').textContent=s.started?Math.round(s.completed/s.started*100)+'%':noData;$('accuracy').textContent=s.questions?Math.round(s.correct/s.questions*100)+'%':noData;
  $('sets').textContent=s.started?`${s.completed} / ${s.started}`:noData;$('wrong-count').textContent=s.questions?String(s.wrong_count):noData;
@@ -59,3 +60,4 @@ busy(async()=>{
  if(!/^\d{4}-\d{2}$/.test($('month').value)){const p=new Intl.DateTimeFormat('en',{timeZone:'Asia/Singapore',year:'numeric',month:'2-digit'}).formatToParts(new Date());$('month').value=p.find(x=>x.type==='year').value+'-'+p.find(x=>x.type==='month').value;}
  status(students.length?'选择学生和月份后查看报告。':'暂无学生。');
 });
+

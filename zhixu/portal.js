@@ -39,9 +39,22 @@ function renderStudents(){
   const cell=document.createElement('td');cell.append(button('编辑',async()=>{hidePin();editor.elements.id.value=s.id;editor.elements.name.value=s.display_name;editor.elements.username.value=s.username||'';editor.elements.grade.value=s.grade;editor.elements.active.checked=s.active;$('active-label').hidden=false;$('editor-title').textContent='编辑学生';courseOptions(s.courses);editor.scrollIntoView({behavior:'smooth'});}));cell.append(document.createTextNode(' '),button('重设 PIN',async()=>{hidePin();const result=await request('reset-pin',{id:s.id});$('new-code').textContent=`英文账号：${result.username||result.code}`;$('new-pin').textContent=`新 PIN：${result.pin}`;$('credentials').hidden=false;message('PIN 已重设，原 PIN 和现有登录已失效。');}));row.append(cell);$('students').append(row);
  });
 }
-async function openCourse(assetId){
+async function openCourse(assetId,exerciseId=null){
  const result=await request('content',{asset_id:assetId});
- $('lesson-frame').srcdoc=result.html;$('workspace').hidden=true;$('lesson').hidden=false;message('');
+ let html=result.html;
+ if(exerciseId){
+  const id=JSON.stringify(exerciseId).replace(/</g,'\\u003c');
+  const launch=`<script>window.addEventListener('load',()=>{try{const id=${id};
+   if(typeof COURSE!=='undefined'){const s=COURSE.sets.find(s=>String(s.id)===id);if(!s)throw Error();start(s);}
+   else if(typeof bank!=='undefined'&&Array.isArray(bank)){const s=bank.find(s=>String(s.id)===id);if(!s)throw Error();start(s);}
+   else if(typeof BANK!=='undefined'){const s=BANK.sets.find(s=>String(s.id)===id);if(!s)throw Error();start(s.id,allGroups.filter(g=>g.id.startsWith(s.id+'-')),s.title);}
+   else if(document.querySelector('[data-start="'+CSS.escape(id)+'"]'))document.querySelector('[data-start="'+CSS.escape(id)+'"]').click();
+   else if(id==='all'&&document.getElementById('mode')){document.getElementById('mode').value='all';start();}
+   else throw Error();
+  }catch{const p=document.createElement('p');p.textContent='请在下方选择老师布置的练习套数。';p.setAttribute('role','status');document.body.prepend(p);}});</script>`;
+  html=html.replace('</body>',launch+'</body>');
+ }
+ $('lesson-frame').srcdoc=html;$('workspace').hidden=true;$('lesson').hidden=false;message('');
 }
 async function showWorkspace(){
  const me=await request('me');allCourses=await request('courses');
@@ -50,8 +63,8 @@ async function showWorkspace(){
  if(!allCourses.length)$('courses').textContent='暂未获授权课程，请联系老师。';
  if(me.role==='admin'){students=await request('list');renderStudents();resetEditor();}
  message('');
- const asset=new URLSearchParams(location.search).get('course');
- if(asset){history.replaceState(null,'',location.pathname);await openCourse(asset);}
+ const query=new URLSearchParams(location.search),asset=query.get('course'),exercise=query.get('exercise');
+ if(asset){history.replaceState(null,'',location.pathname);await openCourse(asset,exercise);}
 }
 $('student-login').onsubmit=e=>{e.preventDefault();const f=e.currentTarget;busy(f,async()=>{
  saveSession(null);const result=await request('login',{code:f.elements.code.value,pin:f.elements.pin.value});f.elements.pin.value='';saveSession({type:'student',token:result.token});await showWorkspace();
@@ -76,3 +89,4 @@ $('logout').onclick=()=>busy($('workspace'),async()=>{
  finally{saveSession(null);hidePin();$('lesson-frame').srcdoc='';$('login').hidden=false;$('workspace').hidden=true;$('lesson').hidden=true;$('students').replaceChildren();students=[];allCourses=[];message('已退出登录。');}
 });
 if(session)showWorkspace().catch(e=>{saveSession(null);$('login').hidden=false;$('workspace').hidden=true;message(e.message,true);});
+
