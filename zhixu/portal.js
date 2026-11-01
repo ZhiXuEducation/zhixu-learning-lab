@@ -39,7 +39,12 @@ function renderStudents(){
   const cell=document.createElement('td');cell.append(button('编辑',async()=>{hidePin();editor.elements.id.value=s.id;editor.elements.name.value=s.display_name;editor.elements.username.value=s.username||'';editor.elements.grade.value=s.grade;editor.elements.active.checked=s.active;$('active-label').hidden=false;$('editor-title').textContent='编辑学生';courseOptions(s.courses);editor.scrollIntoView({behavior:'smooth'});}));cell.append(document.createTextNode(' '),button('重设 PIN',async()=>{hidePin();const result=await request('reset-pin',{id:s.id});$('new-code').textContent=`英文账号：${result.username||result.code}`;$('new-pin').textContent=`新 PIN：${result.pin}`;$('credentials').hidden=false;message('PIN 已重设，原 PIN 和现有登录已失效。');}));row.append(cell);$('students').append(row);
  });
 }
-async function openCourse(assetId,exerciseId=null){
+async function openCourse(assetId,exerciseId=null,homeworkId=null){
+ if(homeworkId){
+  const response=await fetch(API+'/functions/v1/zhixu-reports',{method:'POST',headers:{'Content-Type':'application/json','x-student-token':session?.token||''},body:JSON.stringify({op:'homework-open',homework_batch_id:homeworkId,asset_id:assetId,exercise_id:exerciseId})});
+  const check=await response.json();if(!response.ok)throw Error(check.error||'无法打开这份功课。');
+ }
+ window.zxHomeworkBatchId=homeworkId;
  const result=await request('content',{asset_id:assetId});
  let html=result.html;
  if(exerciseId){
@@ -54,7 +59,7 @@ async function openCourse(assetId,exerciseId=null){
   }catch{const p=document.createElement('p');p.textContent='请在下方选择老师布置的练习套数。';p.setAttribute('role','status');document.body.prepend(p);}});</script>`;
   html=html.replace('</body>',launch+'</body>');
  }
- $('lesson-frame').srcdoc=html;$('workspace').hidden=true;$('lesson').hidden=false;message('');
+ $('lesson-frame').hidden=false;$('lesson-frame').srcdoc=html;$('workspace').hidden=true;$('lesson').hidden=false;message('');
 }
 async function showWorkspace(){
  const me=await request('me');allCourses=await request('courses');
@@ -64,7 +69,7 @@ async function showWorkspace(){
  if(me.role==='admin'){students=await request('list');renderStudents();resetEditor();}
  message('');
  const query=new URLSearchParams(location.search),asset=query.get('course'),exercise=query.get('exercise');
- if(asset){history.replaceState(null,'',location.pathname);await openCourse(asset,exercise);}
+ if(asset){history.replaceState(null,'',location.pathname);try{await openCourse(asset,exercise,query.get('homework'));}catch(e){message(e.message,true);}}
 }
 $('student-login').onsubmit=e=>{e.preventDefault();const f=e.currentTarget;busy(f,async()=>{
  saveSession(null);const result=await request('login',{code:f.elements.code.value,pin:f.elements.pin.value});f.elements.pin.value='';saveSession({type:'student',token:result.token});await showWorkspace();

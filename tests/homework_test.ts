@@ -15,6 +15,7 @@ Deno.test('homework: authorization, publication, deadlines, first submission, ov
  await db.exec(await Deno.readTextFile(new URL('../backend/report-schema.sql',import.meta.url)));
  await db.exec(await Deno.readTextFile(new URL('../backend/homework-schema.sql',import.meta.url)));
  await db.exec(await Deno.readTextFile(new URL('../backend/homework-history.sql',import.meta.url)));
+ await db.exec(await Deno.readTextFile(new URL('../backend/homework-student-close.sql',import.meta.url)));
  await db.exec(`insert into zx_private.exercise_catalog values('s1-express','set1','A套','[]'),('s1-express','set2','B套','[]');set role service_role;`);
  async function call(op:string,payload:any){return (await db.query<{v:any}>('select public.zx_homework_gateway($1,$2::jsonb) v',[op,JSON.stringify(payload)])).rows[0].v;}
  async function rejects(fn:()=>Promise<unknown>,reason:string){try{await fn()}catch{return}throw Error('expected denial: '+reason)}
@@ -46,6 +47,23 @@ Deno.test('homework: authorization, publication, deadlines, first submission, ov
  list=await call('homework-list',{token_hash:'token'});assert(!list.find((r:any)=>r.exercise_id==='set2').submitted_at,'submission after closure changed unsubmitted history');
  await call('homework-publish',{...pub,batch_id:C});await call('homework-cancel',{actor:A,batch_id:C});
  await call('homework-cancel',{actor:A,batch_id:B});assert((await call('homework-list',{token_hash:'token'})).length===0,'cancel not excluded');
+ // Four students: three submitted, only the fourth is excused from further submission.
+ const U='22222222-2222-4222-8222-222222222224',V='22222222-2222-4222-8222-222222222225',D='33333333-3333-4333-8333-333333333339',RUN='44444444-4444-4444-8444-444444444449';
+ await db.exec(`reset role;insert into public.zx_students values('${U}','测试三','Test3',3,true),('${V}','测试四','Test4',4,true);insert into public.zx_student_courses values('${T}','s1-express'),('${U}','s1-express'),('${V}','s1-express');set role service_role;`);
+ await call('homework-publish',{...pub,batch_id:D,student_ids:[S,T,U,V],exercises:[{asset_id:'s1-express',exercise_id:'set1'}]});
+ await db.exec(`reset role;update zx_private.homework_batches set created_at=now()-interval '1 second' where id='${D}';insert into zx_private.learning_runs(id,student_id,asset_id,exercise_id,submitted_at,results) select gen_random_uuid(),x,'s1-express','set1',now(),'[{"id":"q","correct":true,"self":false,"skill":"字词"}]'::jsonb from unnest(array['${S}'::uuid,'${U}'::uuid,'${V}'::uuid]) x;set role service_role;`);
+ const run={token_hash:'token2',homework_batch_id:D,asset_id:'s1-express',exercise_id:'set1',run_id:RUN};
+ async function practice(op:string,payload:any){return (await db.query<{v:any}>('select public.zx_reports_gateway($1,$2::jsonb) v',[op,JSON.stringify(payload)])).rows[0].v;}
+ await call('homework-open',run);await practice('start',run);
+ await call('homework-close-student',{actor:A,batch_id:D,student_id:T});
+ list=(await call('homework-list',{actor:A})).filter((r:any)=>r.batch_id===D);
+ assert(list.length===4&&list.filter((r:any)=>r.submitted_at).length===3,'three results or fourth record lost');assert(list.filter((r:any)=>r.closed_at).length===1,'other students closed');
+ await rejects(()=>call('homework-open',run),'closed original link');await rejects(()=>practice('finish',{...run,items:[]}),'already-open homework submitted after closure');
+ await practice('finish',{...run,homework_batch_id:undefined,items:[]});
+ const closed=(await call('homework-list',{token_hash:'token2'})).find((r:any)=>r.batch_id===D);assert(closed.closed_at&&!closed.submitted_at,'free practice rewrote closed homework');
+ const monthly=(await db.query<{v:any}>("select zx_private.month_snapshot($1,date_trunc('month',$2::date)::date) v",[T,due])).rows[0].v;
+ assert(monthly.homework.assigned===1&&monthly.homework.completed===0&&monthly.homework.incomplete===1,'closed homework removed from monthly denominator');
+ const savedGrades=(await db.query<{n:number}>("select count(*)::int n from zx_private.learning_runs where student_id=any($1::uuid[]) and results @> '[{\"correct\":true}]'::jsonb",[[S,U,V]])).rows[0].n;assert(savedGrades===3,'other student grades modified');
  for(const role of ['anon','authenticated']){await db.exec('reset role;set role '+role);await rejects(()=>call('homework-list',{actor:A}),'direct RPC '+role);await rejects(()=>db.query('select * from zx_private.homework_items'),'direct table '+role)}
  }finally{await db.close()}
 });

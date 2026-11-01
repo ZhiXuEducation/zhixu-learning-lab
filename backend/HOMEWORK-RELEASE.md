@@ -29,3 +29,11 @@ The course-content launch test uses the generated report-content.json and report
 Run homework-history.sql once after homework-schema.sql, then redeploy reports.ts and publish homework.html/homework.js. Students default to unfinished work across all months; administrators default to all statuses due in the current Singapore month. Switching to unfinished work clears the month so old overdue work remains visible. Completed and closed work is available through History and the month selector.
 
 Closing a batch preserves all assignments and first submissions up to the closing time, blocks later submissions from rewriting its history, and permits reassignment. Monthly totals still include closed assignments and their unsubmitted records. Cancellation retains its original meaning of removing an erroneous batch from new statistics. No records are deleted.
+
+## Individual closure and submission enforcement
+
+Run homework-student-close.sql after homework-history.sql. It adds a per-student/per-set closed_at (the admin action closes all sets for one student in a batch). The earliest of batch and item closure freezes first-submission matching. Neither individual nor batch closure removes assigned items from monthly denominators.
+
+Homework URLs carry their batch ID. Opening and start/finish submissions from that context are checked on the server. A closed or cancelled assignment cannot be submitted through its homework context; free practice without a homework context remains available and does not change a closed assignment. An open page whose homework is ended gets a closure message and a free-practice link instead of retrying the blocked submission.
+
+Deploy reports.ts; publish homework.html/homework.js, portal.html/portal.js and learning-records.js. Existing records are untouched. Regression tests include four students, three preserved submissions, one individually closed incomplete assignment, rejected homework submission, and successful free practice that leaves the closed homework incomplete.
