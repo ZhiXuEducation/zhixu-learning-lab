@@ -14,3 +14,10 @@ backend/psle-reading-combined.json
 backend/psle-reading-private.html
 
 backend/psle-stages-private.html
+
+backend/psle-combo-data.json
+backend/psle-combo-catalog.json
+backend/psle-combo-private.html
+
+
+zhixu/*-preview.html

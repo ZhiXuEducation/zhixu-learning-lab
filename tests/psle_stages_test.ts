@@ -17,7 +17,7 @@ Deno.test('PSLE stages: four categories, P6 hub, three stages and preserved exer
  const visible=(id:string)=>!d.getElementById(id).hidden;
  assert(visible('psle-hub')&&!visible('rev-types'));
  assert(d.querySelectorAll('#psle-hub .stages>.card').length===3);
- const upcoming=d.querySelectorAll('#psle-hub .stages>.card')[1];assert(upcoming.textContent.includes('即将开放'));assert(!upcoming.querySelector('a,button'));
+ const upcoming=d.querySelectorAll('#psle-hub .stages>.card')[1];assert(upcoming.textContent.includes('进入组合训练'));assert(upcoming.querySelector('#open-combo'));
  d.getElementById('open-revision').click();assert(visible('rev-types'));
  for(const kind of ['language','cloze','dialogue','reading']){
   d.querySelector(`[data-kind="${kind}"]`).click();assert(visible('rev-home'));
