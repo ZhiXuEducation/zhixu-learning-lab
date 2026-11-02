@@ -11,6 +11,11 @@ Deno.test('homework edge: authenticates students/admins, strips actor spoofing a
  r=await request({op:'homework-publish',actor:'spoof',student_ids:['s'],exercises:[],title:'x',batch_id:'b',due_date:'2026-11-08'},{Authorization:'Bearer test'});assert(r.ok&&calls.at(-1)!.body.payload.actor==='verified-admin');
  r=await request({op:'homework-close',batch_id:'b'},{Authorization:'Bearer test'});assert(r.ok&&calls.at(-1)!.body.payload.batch_id==='b'&&calls.at(-1)!.url.endsWith('zx_homework_gateway'));
  r=await request({op:'homework-close-student',batch_id:'b',student_id:'s'},{Authorization:'Bearer test'});assert(r.ok&&calls.at(-1)!.body.payload.student_id==='s');
+ for(const op of ['homework-schedule','homework-schedule-status','homework-reschedule']){
+  const schedule={op,actor:'spoof',schedule_id:'group',assignments:[{title:'week'}],opens_local:'2026-12-01T00:00',due_local:'2026-12-07T23:59'};
+  r=await request(schedule,{Authorization:'Bearer test'});assert(r.ok&&calls.at(-1)!.body.payload.actor==='verified-admin');assert(calls.at(-1)!.body.payload.schedule_id==='group');
+  const n=calls.length;r=await request(schedule,{'x-student-token':'a'.repeat(64)});assert(r.status===401&&calls.length===n,'student changed schedule');
+ }
  r=await request({op:'homework-open',homework_batch_id:'b',asset_id:'s1',exercise_id:'a'},{'x-student-token':'a'.repeat(64)});assert(r.ok&&calls.at(-1)!.body.payload.homework_batch_id==='b');
  closedReply=true;r=await request({op:'finish',homework_batch_id:'b'},{'x-student-token':'a'.repeat(64)});assert(r.status===409&&(await r.json()).error.includes('功课已结束'));closedReply=false;
  r=await request({op:'load',student_id:'s',month:'2026-11'},{Authorization:'Bearer test'});assert(r.ok&&calls.at(-1)!.url.endsWith('zx_reports_gateway'),'existing reports routing broken');

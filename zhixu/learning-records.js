@@ -10,7 +10,7 @@
   try{while(pending.length){
    const e=pending[0],s=current();if(s?.type!=='student'||s.token!==e.owner){note.textContent='有未同步的练习记录，请保持原学生登录后重试。';retry.hidden=false;return;}
    const r=await fetch('https://cogvtrcoifppwkzzhect.supabase.co/functions/v1/zhixu-reports',{method:'POST',headers:{'Content-Type':'application/json','x-student-token':s.token},body:JSON.stringify(e.body)});
-   if(r.status===409){pending.length=0;note.textContent='这份功课已结束，不能补交。自由练习不会改动原功课记录。';retry.hidden=true;document.getElementById('lesson-frame').hidden=true;const a=document.createElement('a');a.textContent='前往自由练习';a.href='portal.html?'+new URLSearchParams({course:e.body.asset_id,exercise:e.body.exercise_id});note.append(document.createTextNode(' '),a);return;}
+   if(r.status===409){let info={};try{info=await r.json()}catch{}pending.length=0;note.textContent=info.error||'这份功课已结束或尚未开放，当前不能补交。请查看开放或截止时间。';retry.hidden=true;document.getElementById('lesson-frame').hidden=true;const a=document.createElement('a');a.textContent='前往自由练习';a.href='portal.html?'+new URLSearchParams({course:e.body.asset_id,exercise:e.body.exercise_id});note.append(document.createTextNode(' '),a);return;}
    if(!r.ok)throw Error('sync failed');pending.shift();
   }note.textContent='本次练习记录已同步，老师可在月报中查看。';retry.hidden=true;
   }catch{note.textContent='练习记录尚未同步，请勿关闭本页，检查网络后点击重试。';retry.hidden=false;}finally{sending=false;}
