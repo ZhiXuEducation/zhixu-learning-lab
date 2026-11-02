@@ -12,3 +12,5 @@ backend/psle-reading-data.json
 backend/psle-reading-catalog.json
 backend/psle-reading-combined.json
 backend/psle-reading-private.html
+
+backend/psle-stages-private.html

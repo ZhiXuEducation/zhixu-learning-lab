@@ -95,7 +95,7 @@ async function openCourse(assetId,exerciseId=null,homeworkId=null){
 async function showWorkspace(){
  const me=await request('me');allCourses=await request('courses');
  $('admin').hidden=me.role!=='admin';$('greeting').textContent=me.role==='admin'?'管理后台':`${me.name}，欢迎回来`;
- $('courses').replaceChildren();allCourses.forEach(c=>{const card=document.createElement('section');card.className='card';const heading=document.createElement('h3');heading.textContent=c.title;card.append(heading,button('进入课程',()=>openCourse(c.id)));$('courses').append(card);});
+ $('courses').replaceChildren();allCourses.forEach(c=>{const card=document.createElement('section');card.className='card';const heading=document.createElement('h3');heading.textContent=c.title;card.append(heading);if(c.id==='p6-standard'){const a=document.createElement('a');a.href='primary-standard.html';a.className='btn';a.textContent='进入小学普通华文';card.append(a)}else card.append(button('进入课程',()=>openCourse(c.id)));$('courses').append(card);});
  if(!allCourses.length)$('courses').textContent='暂未获授权课程，请联系老师。';
  if(me.role==='admin'){students=await request('list');renderStudents();resetEditor();}
  message('');

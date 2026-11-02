@@ -1,0 +1,25 @@
+{
+  "description": "Navigation-only changes for the protected PSLE asset; apply after updating psle-revision-ui.html and its script. Contains no question-bank data.",
+  "replacements": [
+    {
+      "before": "<section id=\"home\"><div class=\"card\"><span class=\"tag\">5套原创模拟 · 120题</span><h2>选择今天的训练</h2><p>综合模拟每套24题，完成后统一批改。专项训练可按七类语文应用考点练习，也可练整篇短文或完整对话。</p><p class=\"muted\">这是试卷二中48分部分的模拟训练。阅读理解（一）、（二）留在课堂学习。</p><p id=\"storage-note\" role=\"status\"></p></div><h2>综合模拟</h2><div id=\"sets\" class=\"grid\"></div><h2>专项冲刺</h2><div class=\"card\"><label for=\"specialty\">训练项目</label><select id=\"specialty\"><option value=\"language\">语文应用 · 全部75题</option><option>汉语拼音</option><option>汉字辨析</option><option>词语选择</option><option>词语解释</option><option>关联词语</option><option>句子衔接</option><option>词语运用</option><option value=\"cloze\">短文填空 · 5篇</option><option value=\"dialogue\">完成对话 · 5篇</option></select><button id=\"start-specialty\">开始专项训练</button><p class=\"muted\">专项与综合模拟使用同一题库，按考点重新组合；短文和对话保留完整语境。</p></div><div class=\"card\"><h2>我的错题</h2><p id=\"wrong-count\"></p><button id=\"start-wrong\">重练错题</button><p class=\"muted\">错题、进度与成绩只存于当前浏览器；换设备不会同步。</p></div></section>",
+      "after": "<section id=\"home\"><div class=\"card\"><span class=\"tag\">5套原创模拟 · 120题</span><h2>第三阶段｜综合模拟</h2><p>模拟考试节奏，检验整体答题能力。现有5套，每套24题48分，完成后统一批改。</p><p class=\"muted\">本阶段模拟试卷二的48分部分；阅读理解（一）的独立练习位于第一阶段。</p><p id=\"storage-note\" role=\"status\"></p></div><h2>综合模拟</h2><div id=\"sets\" class=\"grid\"></div><details id=\"mock-tools\"><summary>模拟卷内专项练习与错题</summary><div class=\"card\"><label for=\"specialty\">训练项目</label><select id=\"specialty\"><option value=\"language\">语文应用 · 全部75题</option><option>汉语拼音</option><option>汉字辨析</option><option>词语选择</option><option>词语解释</option><option>关联词语</option><option>句子衔接</option><option>词语运用</option><option value=\"cloze\">短文填空 · 5篇</option><option value=\"dialogue\">完成对话 · 5篇</option></select><button id=\"start-specialty\">开始专项训练</button><p class=\"muted\">专项与综合模拟使用同一题库，按考点重新组合；短文和对话保留完整语境。</p></div><div class=\"card\"><h2>我的错题</h2><p id=\"wrong-count\"></p><button id=\"start-wrong\">重练错题</button><p class=\"muted\">错题、进度与成绩只存于当前浏览器；换设备不会同步。</p></div></details></section>"
+    },
+    {
+      "before": "function show(id){['home','quiz','results'].forEach(x=>$(x).hidden=x!==id);window.scrollTo(0,0)}",
+      "after": "function show(id){['home','quiz','results','psle-hub','rev-types','rev-home','rev-quiz','rev-result'].forEach(x=>$(x).hidden=x!==id);window.scrollTo(0,0)}"
+    },
+    {
+      "before": "返回训练首页",
+      "after": "返回综合模拟"
+    },
+    {
+      "before": "href=\"../primary.html\"",
+      "after": "href=\"../primary-standard.html\""
+    },
+    {
+      "before": "</style>",
+      "after": ".stage-back{color:var(--green)}.stage-pending{display:inline-block;padding:12px 18px;border-radius:9px;background:#efeee7;color:#606a62}.stages .card{display:flex;flex-direction:column}.stages .card>p:first-of-type{flex:1}.stages button,.stages .stage-pending{align-self:flex-start}@media(max-width:560px){.stages{grid-template-columns:1fr}}\n</style>"
+    }
+  ]
+}
