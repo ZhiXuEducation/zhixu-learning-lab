@@ -1,6 +1,16 @@
 'use strict';
 const $=id=>document.getElementById(id),API='https://cogvtrcoifppwkzzhect.supabase.co';
 let options=null,records=[],isAdmin=false,working=false,publishId=null,publishKey=null;
+
+// Shared calendar arithmetic uses Singapore dates, independent of the device timezone.
+function homeworkDay(v,n){const d=new Date(v+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+function homeworkLocal(v){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Singapore',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(v));const f=t=>p.find(x=>x.type===t).value;return `${f('year')}-${f('month')}-${f('day')}T${f('hour')}:${f('minute')}`}
+let publishManualDue=false;
+function defaultPublishDue(){if(!publishManualDue&&$('open-date').value){$('due').value=homeworkDay($('open-date').value,6);$('due-time').value='23:59'}}
+function resetPublishDates(){const now=homeworkLocal(new Date());publishManualDue=false;$('open-date').value=now.slice(0,10);$('open-time').value=now.slice(11);defaultPublishDue()}
+$('open-date').onchange=defaultPublishDue;
+for(const id of ['due','due-time'])for(const event of ['input','change'])$(id).addEventListener(event,()=>{publishManualDue=true});
+
 const labels={pending:'待完成',overdue:'已逾期',completed:'已完成',late:'迟交',upcoming:'即将开放',ended:'已结束'};
 function session(){try{return JSON.parse(sessionStorage.getItem('zx_session')||'null')}catch{return null}}
 async function call(op,body={}){
@@ -51,16 +61,22 @@ $('publish-form').onsubmit=e=>{e.preventDefault();busy(async()=>{
  const student_ids=[...$('student-options').querySelectorAll('input:checked')].map(i=>i.value),exercises=[...$('exercise-options').querySelectorAll('input:checked')].map(i=>JSON.parse(i.value));
  if(!student_ids.length||!exercises.length)throw Error('请至少选择一名学生和一套练习。');
  // Retain the request ID on a failed network response so retries cannot duplicate publication.
- const body={title:$('title').value.trim(),due_date:$('due').value,student_ids,exercises},key=JSON.stringify(body);
- if(key!==publishKey){publishId=crypto.randomUUID();publishKey=key;}await call('homework-publish',{batch_id:publishId,...body});publishId=null;publishKey=null;
- $('publish-form').reset();renderOptions();await reload();$('status').textContent=`已为 ${student_ids.length} 名学生发布 ${exercises.length} 套练习。`;
+ const assignment={title:$('title').value.trim(),exercises,opens_local:$('open-date').value+'T'+$('open-time').value,due_local:$('due').value+'T'+$('due-time').value};
+ if(!assignment.title||!$('open-date').value||!$('open-time').value||!$('due').value||!$('due-time').value)throw Error('请填写功课名称及开放、截止时间。');
+ if(assignment.due_local<assignment.opens_local)throw Error('截止时间不能早于开放时间。');
+ const key=JSON.stringify({student_ids,assignment});
+ if(key!==publishKey){publishId=crypto.randomUUID();publishKey=key;}
+ await call('homework-schedule',{schedule_id:publishId,student_ids,assignments:[{batch_id:publishId,...assignment}]});publishId=null;publishKey=null;
+ $('publish-form').reset();resetPublishDates();renderOptions();
+ $('status').textContent=`已为 ${student_ids.length} 名学生发布 ${exercises.length} 套练习。`;
+ try{await reload()}catch{$('status').textContent+=' 功课已保存，列表暂未更新，请刷新查看。';}
 })};
 busy(async()=>{
  const s=session();if(!s)throw Error('请先返回课程页面登录。');isAdmin=s.type==='admin';$('heading').textContent=isAdmin?'功课管理':'我的功课';$('publish-form').hidden=!isAdmin;$('filter-student').parentElement.hidden=!isAdmin;$('student-th').hidden=!isAdmin;
  $('filter-view').value=isAdmin?'all':'active';$('filter-month').value=isAdmin?monthOf(new Date()):'';
  if(isAdmin){options=await call('homework-options');options.courses.forEach(c=>addOption($('course'),c.id,c.title));options.students.forEach(s=>addOption($('filter-student'),s.id,`${s.number}号 ${s.name}`));renderOptions();window.dispatchEvent(new Event('zx-homework-options'));
-  const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Singapore',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());$('due').min=['year','month','day'].map(t=>p.find(x=>x.type===t).value).join('-');
- }await reload();$('status').textContent=isAdmin?'选择学生、练习和截止日期后发布。':'点击开始练习，完整提交后会自动更新功课状态。';
+  resetPublishDates();
+ }await reload();$('status').textContent=isAdmin?'日期已按新加坡时间填写，可调整后发布。':'点击开始练习，完整提交后会自动更新功课状态。';
 });
 
 // Refresh server-derived states on return to the page and while it remains open.

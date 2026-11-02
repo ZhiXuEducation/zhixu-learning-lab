@@ -5,11 +5,11 @@ Deno.test('homework UI: admin selects two sets, student gets exact practice link
  for(const admin of [true,false]){
  const dom=new JSDOM(await Deno.readTextFile(new URL('zhixu/homework.html',root)),{url:'https://zhixueducation.github.io/zhixu-learning-lab/zhixu/homework.html',runScripts:'outside-only'});
  try{const w=dom.window,d=w.document;w.sessionStorage.setItem('zx_session',JSON.stringify(admin?{type:'admin',access_token:'test'}:{type:'student',token:'test'}));w.crypto.randomUUID=()=>crypto.randomUUID();let published:any=null;
- w.fetch=async(_url:any,init:any)=>{const b=JSON.parse(init.body);if(b.op==='homework-publish')published=b;return {ok:true,json:async()=>b.op==='homework-options'?{students:[{id:'s',name:'<img src=x>',number:1,courses:['s1-higher']}],courses:[{id:'s1-higher',title:'中一高华'}],exercises:[{asset_id:'s1-higher',exercise_id:'u1A',title:'单元一A套',courses:['s1-higher']},{asset_id:'s1-higher',exercise_id:'u1B',title:'单元一B套',courses:['s1-higher']}]}:b.op==='homework-list'?[{batch_id:'b',student_id:'s',student_name:'<img src=x>',title:'单元一',exercise_title:'A套',asset_id:'s1-higher',exercise_id:'u1A',due_at:'2026-11-08T15:59:59Z',status:'pending',submitted_at:null}]:{ok:true}};};
+ w.fetch=async(_url:any,init:any)=>{const b=JSON.parse(init.body);if(b.op==='homework-schedule')published=b;return {ok:true,json:async()=>b.op==='homework-options'?{students:[{id:'s',name:'<img src=x>',number:1,courses:['s1-higher']}],courses:[{id:'s1-higher',title:'中一高华'}],exercises:[{asset_id:'s1-higher',exercise_id:'u1A',title:'单元一A套',courses:['s1-higher']},{asset_id:'s1-higher',exercise_id:'u1B',title:'单元一B套',courses:['s1-higher']}]}:b.op==='homework-list'?[{batch_id:'b',student_id:'s',student_name:'<img src=x>',title:'单元一',exercise_title:'A套',asset_id:'s1-higher',exercise_id:'u1A',due_at:'2026-11-08T15:59:59Z',status:'pending',submitted_at:null}]:{ok:true}};};
  w.eval(await Deno.readTextFile(new URL('zhixu/homework.js',root)));const settle=async()=>{for(let i=0;i<35;i++)await Promise.resolve()};await settle();
  if(admin){(d.getElementById('filter-month') as any).value='';d.getElementById('filter-month')!.dispatchEvent(new w.Event('change'));}
  assert(!d.querySelector('img'),'unsafe student name');assert(d.querySelectorAll('#rows tr').length===1);
- if(admin){d.querySelectorAll('fieldset input').forEach((x:any)=>x.checked=true);(d.getElementById('title') as any).value='单元一';(d.getElementById('due') as any).value='2026-11-08';d.getElementById('publish-form')!.dispatchEvent(new w.Event('submit',{cancelable:true}));await settle();assert(published.exercises.length===2&&published.student_ids.length===1,'two-set publication');assert(d.getElementById('status')!.textContent!.includes('已为 1 名学生发布 2 套'));}
+ if(admin){d.querySelectorAll('fieldset input').forEach((x:any)=>x.checked=true);(d.getElementById('title') as any).value='单元一';(d.getElementById('due') as any).value='2026-11-08';d.getElementById('publish-form')!.dispatchEvent(new w.Event('submit',{cancelable:true}));await settle();assert(published.assignments[0].exercises.length===2&&published.student_ids.length===1,'two-set publication');assert(d.getElementById('status')!.textContent!.includes('已为 1 名学生发布 2 套'));}
  else{assert((d.getElementById('publish-form') as any).hidden);assert(d.querySelector('#rows a')!.getAttribute('href')==='portal.html?course=s1-higher&exercise=u1A&homework=b');}
  }finally{dom.window.close()}}
 });
@@ -49,5 +49,21 @@ Deno.test('closed homework submit shows closure and offers free practice without
  w.eval(await Deno.readTextFile(new URL('zhixu/learning-records.js',root)));
  w.dispatchEvent(new w.MessageEvent('message',{source:(d.getElementById('lesson-frame') as any).contentWindow,origin:w.location.origin,data:{type:'zx-learning',op:'finish',asset_id:'s1-higher',exercise_id:'u1A',run_id:'run',items:[]}}));
  for(let i=0;i<30;i++)await Promise.resolve();assert(body.homework_batch_id==='batch');assert((d.getElementById('lesson-frame') as any).hidden);assert(d.getElementById('sync-status')!.textContent!.includes('不能补交'));assert(d.querySelector('#sync-status a')!.getAttribute('href')==='portal.html?course=s1-higher&exercise=u1A');
+ }finally{dom.window.close()}
+});
+Deno.test('one-click dates: Singapore today/current minute, seven calendar days, manual override and stable retry',async()=>{
+ const dom=new JSDOM(await Deno.readTextFile(new URL('zhixu/homework.html',root)),{url:'https://zhixueducation.github.io/homework.html',runScripts:'outside-only'});
+ try{const w=dom.window,d=w.document,q=(id:string)=>d.getElementById(id) as any;
+ const NativeDate=w.Date;w.Date=class extends NativeDate{constructor(...args:any[]){super(...(args.length?args:['2026-11-01T16:05:00Z']) as [any]);}static now(){return new NativeDate('2026-11-01T16:05:00Z').getTime()}} as any;
+ w.sessionStorage.setItem('zx_session',JSON.stringify({type:'admin',access_token:'test'}));w.crypto.randomUUID=()=>crypto.randomUUID();const sent:any[]=[];
+ w.fetch=async(_u:any,init:any)=>{const b=JSON.parse(init.body);if(b.op==='homework-schedule'){sent.push(b);if(sent.length===1)throw Error('network interruption')};return {ok:true,json:async()=>b.op==='homework-options'?{courses:[{id:'p6',title:'P6'}],students:[{id:'s',name:'test',number:1,courses:['p6']}],exercises:[{asset_id:'p6',exercise_id:'a',title:'A',courses:['p6']}]}:b.op==='homework-list'?[]:{saved:true}}};
+ w.eval(await Deno.readTextFile(new URL('zhixu/homework.js',root)));const settle=async()=>{for(let i=0;i<60;i++)await Promise.resolve()};await settle();
+ assert(q('open-date').value==='2026-11-02'&&q('open-time').value==='00:05','not Singapore current date/time');assert(q('due').value==='2026-11-08'&&q('due-time').value==='23:59','default seven calendar days');
+ const change=(id:string,value:string,event='change')=>{q(id).value=value;q(id).dispatchEvent(new w.Event(event))};
+ change('open-date','2026-12-29');assert(q('due').value==='2027-01-04','year boundary');
+ change('due','2027-01-10','input');change('due-time','18:30','input');change('open-date','2026-12-30');assert(q('due').value==='2027-01-10'&&q('due-time').value==='18:30','manual deadline overwritten');
+ q('title').value='test';d.querySelectorAll('#student-options input,#exercise-options input').forEach((x:any)=>x.checked=true);
+ const submit=()=>q('publish-form').dispatchEvent(new w.Event('submit',{cancelable:true}));submit();submit();await settle();assert(sent.length===1,'duplicate click');submit();await settle();assert(sent.length===2&&JSON.stringify(sent[0])===JSON.stringify(sent[1]),'retry changed id/body');assert(sent[1].assignments[0].opens_local==='2026-12-30T00:05'&&sent[1].assignments[0].due_local==='2027-01-10T18:30','dates not saved');assert(q('open-date').value==='2026-11-02'&&q('due').value==='2026-11-08','reset dates');
+ change('due-time','20:00','change');change('open-date','2026-11-04');assert(q('due').value==='2026-11-08'&&q('due-time').value==='20:00','time-only manual override');
  }finally{dom.window.close()}
 });

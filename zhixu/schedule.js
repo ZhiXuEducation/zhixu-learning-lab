@@ -1,8 +1,7 @@
 // Extends the existing homework page; all writes still pass through its authenticated API.
 (()=>{
  let ready=false,rows=[],preview=null,pending=null;
- const key='zx_schedule_pending_v1',day=(v,n)=>{const d=new Date(v+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
- const local=v=>{const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Singapore',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(v));const f=t=>p.find(x=>x.type===t).value;return `${f('year')}-${f('month')}-${f('day')}T${f('hour')}:${f('minute')}`};
+ const key='zx_schedule_pending_v1',day=homeworkDay,local=homeworkLocal;
  const owner=()=>session()?.user?.id||null;
  function remember(){sessionStorage.setItem(key,JSON.stringify({owner:owner(),body:pending}))}
  function invalidate(){preview=null;$('schedule-preview').hidden=true}
