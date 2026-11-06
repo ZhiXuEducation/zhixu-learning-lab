@@ -70,14 +70,16 @@ async function openCourse(assetId,exerciseId=null,homeworkId=null){
   const response=await fetch(API+'/functions/v1/zhixu-reports',{method:'POST',headers:{'Content-Type':'application/json','x-student-token':session?.token||''},body:JSON.stringify({op:'homework-open',homework_batch_id:homeworkId,asset_id:assetId,exercise_id:exerciseId})});
   const check=await response.json();if(!response.ok)throw Object.assign(Error(check.error||'无法打开这份功课。'),{status:response.status,op:'homework-open'});
  }
- window.zxHomeworkBatchId=homeworkId;
+ window.zxHomeworkBatchId=homeworkId;window.zxHomeworkExerciseId=exerciseId;
  const result=await request('content',{asset_id:assetId});
+ window.zxActiveAssetId=assetId;
  let html=result.html;
  if(exerciseId){
   const id=JSON.stringify(exerciseId).replace(/</g,'\\u003c');
   const launch=`<script>window.addEventListener('load',()=>{try{const id=${id};
    if(typeof COURSE!=='undefined'){const s=COURSE.sets.find(s=>String(s.id)===id);if(!s)throw Error();start(s);}
    else if(typeof bank!=='undefined'&&Array.isArray(bank)){const s=bank.find(s=>String(s.id)===id);if(!s)throw Error();start(s);}
+   else if(id.startsWith('p5-review-')&&typeof window.zxP5Open==='function'){window.zxP5Open(id);}
    else if(id.startsWith('psle-rev-')&&typeof window.zxRevisionOpen==='function'){window.zxRevisionOpen(id);}
    else if(typeof BANK!=='undefined'){const s=BANK.sets.find(s=>String(s.id)===id);if(!s)throw Error();start(s.id,allGroups.filter(g=>g.id.startsWith(s.id+'-')),s.title);}
    else if(document.querySelector('[data-start="'+CSS.escape(id)+'"]'))document.querySelector('[data-start="'+CSS.escape(id)+'"]').click();

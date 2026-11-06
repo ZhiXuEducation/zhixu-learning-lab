@@ -11,17 +11,17 @@ export async function reportHandler(req:Request){
   if(reader)while(true){const {value,done}=await reader.read();if(done)break;size+=value.length;if(size>65536){await reader.cancel();return reply({error:'提交内容过大。'},413);}chunks.push(value);}
   const bytes=new Uint8Array(size);let off=0;for(const c of chunks){bytes.set(c,off);off+=c.length;}
   const b=JSON.parse(new TextDecoder().decode(bytes));let payload:Record<string,unknown>;
-  if(['start','finish'].includes(b.op)||(['homework-list','homework-open'].includes(b.op)&&req.headers.has('x-student-token'))){
+  if(['start','finish','p5-start','p5-finish','p5-retry'].includes(b.op)|| (b.op==='p5-history'&&req.headers.has('x-student-token'))||(['homework-list','homework-open'].includes(b.op)&&req.headers.has('x-student-token'))){
    const token=req.headers.get('x-student-token')||'';if(!/^[a-f0-9]{64}$/.test(token))return reply({error:'请重新登录。'},401);
-   payload={token_hash:await digest(token),asset_id:b.asset_id,exercise_id:b.exercise_id,run_id:b.run_id,items:b.items,homework_batch_id:b.homework_batch_id};
+   payload={token_hash:await digest(token),asset_id:b.asset_id,exercise_id:b.exercise_id,run_id:b.run_id,items:b.items,homework_batch_id:b.homework_batch_id,retry_id:b.retry_id,base_run_id:b.base_run_id};
   }else{
-   if(!['students','history','load','refresh','save','homework-list','homework-options','homework-publish','homework-cancel','homework-close','homework-close-student','homework-schedule','homework-schedule-status','homework-reschedule'].includes(b.op))return reply({error:'操作不支持。'},400);
+   if(!['p5-history','p5-analysis','students','history','load','refresh','save','homework-list','homework-options','homework-publish','homework-cancel','homework-close','homework-close-student','homework-schedule','homework-schedule-status','homework-reschedule'].includes(b.op))return reply({error:'操作不支持。'},400);
    const bearer=req.headers.get('authorization')||'';if(!bearer.startsWith('Bearer '))return reply({error:'需要管理员登录。'},401);
    const user=await fetch(URL+'/auth/v1/user',{headers:{apikey:KEY,Authorization:bearer}});if(!user.ok)return reply({error:'管理员登录已过期，请重新登录。'},401);
    payload={actor:(await user.json()).id,student_id:b.student_id,month:b.month,comment:b.comment,comment_en:b.comment_en,
     batch_id:b.batch_id,title:b.title,due_date:b.due_date,student_ids:b.student_ids,exercises:b.exercises,schedule_id:b.schedule_id,assignments:b.assignments,opens_local:b.opens_local,due_local:b.due_local};
   }
-  const rpc=b.op.startsWith('homework-')?'zx_homework_gateway':'zx_reports_gateway';
+  const rpc=b.op.startsWith('p5-')?'zx_p5_gateway':b.op.startsWith('homework-')?'zx_homework_gateway':'zx_reports_gateway';
   const r=await fetch(URL+'/rest/v1/rpc/'+rpc,{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'},body:JSON.stringify({op:b.op,payload})});
   if(!r.ok){const e=await r.json();return reply({error:e.message==='denied'?'没有访问权限。':(/^[\u3400-\u9fff]/.test(e.message)?e.message:'保存未完成，请检查输入或稍后重试。')},e.message==='denied'?403:(/^(功课已结束|功课尚未开放|功课已完成)/.test(e.message))?409:400);}
   return reply(await r.json());

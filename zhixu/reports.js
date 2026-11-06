@@ -29,6 +29,7 @@ function render(){
  if(priorities.length)priorities.forEach(p=>row('priorities',[p.area,p.evidence,p.advice]));
  else row('priorities',[s.questions?(s.wrong_count?'记录较少，暂不判断具体薄弱单元 / More practice is needed to identify specific areas.':'本月已记录客观题未发现明显薄弱项 / No clear difficulty found in recorded questions.') : noData,'—',s.questions?'继续完成单元练习，积累更多学习记录。 / Complete further unit practice to build a clearer picture.':'暂无建议 / No recommendation yet']);
  $('wrong-all').replaceChildren();if(s.wrong.length)s.wrong.forEach(x=>row('wrong-all',[x.asset_id+' / '+x.exercise_id,x.skill+'：'+x.prompt,textAnswer(x.answer)+' / '+textAnswer(x.expected)]));else row('wrong-all',['暂无错题记录','—','—']);
+ window.dispatchEvent(new Event('zx-p5-report'));
  $('comment').value=loaded.comment||'';$('comment-en').value=loaded.comment_en||'';syncComments();
 }
 async function openReport(id,m){loaded=null;$('report').hidden=true;studentId=id;month=m;loaded=await call('load');render();}
