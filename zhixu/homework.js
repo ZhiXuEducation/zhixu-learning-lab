@@ -38,7 +38,7 @@ const dateTime=v=>new Intl.DateTimeFormat('zh-SG',{timeZone:'Asia/Singapore',yea
 const date=v=>new Intl.DateTimeFormat('zh-SG',{timeZone:'Asia/Singapore',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(v));
 function render(){
  const sid=$('filter-student').value,filter=$('filter-status').value,view=$('filter-view').value,month=$('filter-month').value;
- const list=records.filter(r=>(!sid||r.student_id===sid)&&(!month||monthOf(r.due_at)===month)&&(view==='all'||(view==='active'?!r.submitted_at&&!r.closed_at&&!['upcoming','ended'].includes(r.status):view==='upcoming'?r.status==='upcoming'&&!r.closed_at:!!r.submitted_at||!!r.closed_at||r.status==='ended'))&&(!filter||(filter==='incomplete'?!r.submitted_at:filter==='completed'?!!r.submitted_at:r.status===filter)));
+ const list=records.filter(r=>(!sid||r.student_id===sid)&&(!month||monthOf(r.due_at)===month)&&(view==='all'||(view==='active'?!r.closed_at&&!['upcoming','ended'].includes(r.status):view==='upcoming'?r.status==='upcoming'&&!r.closed_at:!!r.closed_at||r.status==='ended'))&&(!filter||(filter==='incomplete'?!r.submitted_at:filter==='completed'?!!r.submitted_at:r.status===filter)));
  const completed=list.filter(r=>r.submitted_at).length,overdue=list.filter(r=>r.status==='overdue').length,late=list.filter(r=>r.status==='late').length;
  $('summary').textContent=`当前显示 ${list.length} 项：已完成 ${completed}，未完成 ${list.length-completed}（逾期 ${overdue}），迟交 ${late}。`;
  list.sort((a,b)=>Date.parse(a.status==='upcoming'?a.opens_at:a.due_at)-Date.parse(b.status==='upcoming'?b.opens_at:b.due_at));
@@ -73,7 +73,7 @@ $('publish-form').onsubmit=e=>{e.preventDefault();busy(async()=>{
 })};
 busy(async()=>{
  const s=session();if(!s)throw Error('请先返回课程页面登录。');isAdmin=s.type==='admin';$('heading').textContent=isAdmin?'功课管理':'我的功课';$('publish-form').hidden=!isAdmin;$('filter-student').parentElement.hidden=!isAdmin;$('student-th').hidden=!isAdmin;
- $('filter-view').value=isAdmin?'all':'active';$('filter-month').value=isAdmin?monthOf(new Date()):'';
+ $('filter-view').value='active';$('filter-month').value=isAdmin?monthOf(new Date()):'';
  if(isAdmin){options=await call('homework-options');options.courses.forEach(c=>addOption($('course'),c.id,c.title));options.students.forEach(s=>addOption($('filter-student'),s.id,`${s.number}号 ${s.name}`));renderOptions();window.dispatchEvent(new Event('zx-homework-options'));
   resetPublishDates();
  }await reload();$('status').textContent=isAdmin?'日期已按新加坡时间填写，可调整后发布。':'点击开始练习，完整提交后会自动更新功课状态。';
