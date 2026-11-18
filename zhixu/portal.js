@@ -112,9 +112,10 @@ async function openCourse(assetId,exerciseId=null,homeworkId=null){
  window.zxActiveAssetId=assetId;
  let html=result.html;
  if(assetId==='p5-review'){
-  // srcdoc inherits the page's origin, but its location is about:srcdoc.
-  html=html.replace("e.origin!==location.origin||e.data?.type!=='zx-p5-response'", "e.origin!==window.origin||e.data?.type!=='zx-p5-response'")
-   .replace("parent.postMessage({type:'zx-p5-request',id,op,...body},location.origin)", "parent.postMessage({type:'zx-p5-request',id,op,...body},window.origin)");
+  // Pass the portal's HTTP(S) origin explicitly to the srcdoc lesson.
+  const portalOrigin=JSON.stringify(location.origin);
+  html=html.replace("e.origin!==location.origin||e.data?.type!=='zx-p5-response'", `e.origin!==${portalOrigin}||e.data?.type!=='zx-p5-response'`)
+   .replace("parent.postMessage({type:'zx-p5-request',id,op,...body},location.origin)", `parent.postMessage({type:'zx-p5-request',id,op,...body},${portalOrigin})`);
  }
  if(exerciseId){
   const id=JSON.stringify(exerciseId).replace(/</g,'\\u003c');
