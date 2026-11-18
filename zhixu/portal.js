@@ -108,7 +108,7 @@ async function showWorkspace(){
  function courseCard(c){
   const card=document.createElement('section');card.className='card';
   const heading=document.createElement('h3');heading.textContent=c.id==='p5-review'?'小五复习':c.id==='essay-training'?'作文审题训练':c.title;card.append(heading);
-  if(c.id==='p6-standard'){const a=document.createElement('a');a.href='primary-standard.html';a.className='btn';a.textContent='进入小学普通华文';card.append(a);}
+  if(c.id==='p6-standard'){const a=document.createElement('a');a.href='primary-standard.html';a.className='btn';a.textContent='进入课程';card.append(a);}
   else card.append(button('进入课程',()=>openCourse(c.id)));
   return card;
  }
