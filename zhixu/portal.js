@@ -13,11 +13,12 @@ function showLoading(text){$('loading-text').textContent=text;$('retry-session')
 function expired(error){return error.status===401 || (error.status===403 && error.op==='me');}
 function showLogin(){ $('lesson-frame').srcdoc='';showView('login'); }
 function courseUrl(assetId,exerciseId,homeworkId){
- const url=new URL(location.href);
+ // Avoid URL parsing of sandboxed/about:srcdoc locations (Safari throws SyntaxError).
+ const url=new URL('https://zhixueducation.github.io/zhixu-learning-lab/zhixu/portal.html');
  for(const [key,value] of Object.entries({course:assetId,exercise:exerciseId,homework:homeworkId})){
   if(value)url.searchParams.set(key,value);else url.searchParams.delete(key);
  }
- history.replaceState(null,'',url.pathname+url.search+url.hash);
+ try{history.replaceState(null,'',url.pathname+url.search+url.hash);}catch(e){console.warn('Cannot update course URL',e);}
 }
 function enterSession(){
  if(restoring)return restoring;
@@ -124,7 +125,7 @@ async function openCourse(assetId,exerciseId=null,homeworkId=null){
   }catch{const p=document.createElement('p');p.textContent='请在下方选择老师布置的练习套数。';p.setAttribute('role','status');document.body.prepend(p);}});</script>`;
   html=html.replace('</body>',launch+'</body>');
  }
- $('lesson-frame').hidden=false;$('lesson-frame').srcdoc=html;courseUrl(assetId,exerciseId,homeworkId);showView('lesson');message('');
+ $('lesson-frame').hidden=false;$('lesson-frame').srcdoc=html;showView('lesson');message('');courseUrl(assetId,exerciseId,homeworkId);
  }catch(e){
   if(expired(e)){saveSession(null);showLogin();}else showView(lessonReturnView);
   throw e;
