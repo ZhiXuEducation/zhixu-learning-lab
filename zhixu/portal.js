@@ -104,6 +104,7 @@ async function showWorkspace(){
  // Only server-authorized courses can appear for students.
  const holiday=allCourses.filter(c=>holidayIds.has(c.id));
  const regular=allCourses.filter(c=>!holidayIds.has(c.id));
+ const hasPsle=allCourses.some(c=>c.id==='p6-standard'||c.id==='p6-higher');
  function courseCard(c){
   const card=document.createElement('section');card.className='card';
   const heading=document.createElement('h3');heading.textContent=c.id==='p5-review'?'小五复习':c.id==='essay-training'?'作文审题训练':c.title;card.append(heading);
@@ -112,8 +113,14 @@ async function showWorkspace(){
   return card;
  }
  holiday.forEach(c=>$('holiday-courses').append(courseCard(c)));
+ // The existing language-application exercises live inside the PSLE revision asset.
+ // Keep this shortcut admin-only until its own backend authorization is isolated.
+ if(isAdmin&&hasPsle){const card=document.createElement('section');card.className='card';const title=document.createElement('h3');title.textContent='语文应用';card.append(title);card.append(button('进入语文应用',async()=>{await openCourse('psle-review');}));$('holiday-courses').append(card);}
+ if(hasPsle){const card=document.createElement('section');card.className='card';const title=document.createElement('h3');title.textContent='PSLE 冲刺';card.append(title);card.append(button('进入 PSLE 冲刺',()=>openCourse('psle-review')));$('psle-courses').replaceChildren(card);}
+ else $('psle-courses').replaceChildren();
+ $('psle-section').hidden=!hasPsle;
  regular.forEach(c=>$('courses').append(courseCard(c)));
- $('holiday-section').hidden=!holiday.length;
+ $('holiday-section').hidden=!holiday.length&&!(isAdmin&&hasPsle);
  $('regular-section').hidden=!regular.length;
  $('student-homework').hidden=isAdmin;
  if(!allCourses.length)$('courses').textContent='暂未获授权课程，请联系老师。';
