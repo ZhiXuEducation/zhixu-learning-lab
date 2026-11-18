@@ -63,6 +63,34 @@ function renderStudents(){
   const cell=document.createElement('td');cell.append(button('编辑',async()=>{hidePin();editor.elements.id.value=s.id;editor.elements.name.value=s.display_name;editor.elements.username.value=s.username||'';editor.elements.grade.value=s.grade;editor.elements.active.checked=s.active;$('active-label').hidden=false;$('editor-title').textContent='编辑学生';courseOptions(s.courses);editor.scrollIntoView({behavior:'smooth'});}));cell.append(document.createTextNode(' '),button('重设 PIN',async()=>{hidePin();const result=await request('reset-pin',{id:s.id});$('new-code').textContent=`英文账号：${result.username||result.code}`;$('new-pin').textContent=`新 PIN：${result.pin}`;$('credentials').hidden=false;message('PIN 已重设，原 PIN 和现有登录已失效。');}));row.append(cell);$('students').append(row);
  });
 }
+
+// Teacher dashboard uses existing homework-list records; no new database writes.
+async function loadTeacherDashboard(){
+ const note=$('dashboard-status');note.textContent='正在更新功课概况…';
+ $('dash-students').textContent=String(students.filter(s=>s.active).length);
+ try{
+  const headers={'Content-Type':'application/json',Authorization:'Bearer '+session.access_token};
+  const response=await fetch(API+'/functions/v1/zhixu-reports',{method:'POST',headers,body:JSON.stringify({op:'homework-list'})});
+  const records=await response.json();if(!response.ok||!Array.isArray(records))throw Error(records?.error||'功课数据暂时不可用');
+  const now=Date.now();
+  const active=records.filter(r=>!r.closed_at&&r.status!=='ended');
+  const pending=active.filter(r=>!r.submitted_at&&r.status!=='upcoming');
+  const overdue=pending.filter(r=>r.status==='overdue');
+  const finished=records.filter(r=>r.submitted_at);
+  const eligible=records.filter(r=>r.status!=='upcoming');
+  $('dash-pending').textContent=String(pending.length);
+  $('dash-rate').textContent=eligible.length?Math.round(finished.filter(r=>r.status!=='upcoming').length/eligible.length*100)+'%':'—';
+  const alerts=$('dashboard-alerts');alerts.replaceChildren();
+  const add=(label,href)=>{const a=document.createElement('a');a.className='dashboard-alert';a.href=href;a.textContent=label;alerts.append(a)};
+  if(overdue.length)add(overdue.length+' 项功课已逾期 · 查看名单','homework.html');
+  if(pending.length)add(pending.length+' 项功课尚未完成 · 查看功课','homework.html');
+  const weak=finished.filter(r=>Number(r.total)>0&&Number(r.correct)/Number(r.total)<.6);
+  if(weak.length)add(weak.length+' 次已交功课正确率低于 60% · 查看报告','reports.html');
+  if(!alerts.children.length){const p=document.createElement('p');p.className='muted';p.textContent='目前没有待处理的功课提醒。';alerts.append(p)}
+  note.textContent='依据现有功课记录统计 · 更新于 '+new Intl.DateTimeFormat('zh-SG',{timeZone:'Asia/Singapore',hour:'2-digit',minute:'2-digit'}).format(new Date());
+ }catch(e){$('dash-pending').textContent='—';$('dash-rate').textContent='—';$('dashboard-alerts').textContent='暂时无法读取功课概况，可从下方进入功课页面。';note.textContent='概况读取失败：'+e.message;}
+}
+
 function showHomeworkRetry(batchId,assetId,exerciseId){
  if(!batchId||batchId!==window.zxHomeworkBatchId||assetId!==window.zxActiveAssetId||exerciseId!==window.zxHomeworkExerciseId||$('lesson').hidden)return;
  const wrapper=$('homework-retry');
@@ -135,7 +163,7 @@ async function showWorkspace(){
  $('regular-section').hidden=!regular.length;
  $('student-homework').hidden=isAdmin;
  if(!allCourses.length)$('courses').textContent='暂未获授权课程，请联系老师。';
- if(me.role==='admin'){students=await request('list');renderStudents();resetEditor();}
+ if(me.role==='admin'){students=await request('list');renderStudents();resetEditor();await loadTeacherDashboard();}
  message('');
  const query=new URLSearchParams(location.search),asset=query.get('course'),exercise=query.get('exercise');
  showView(holidayOnly?'holiday':'workspace');
