@@ -33,6 +33,23 @@ function renderOptions(){
  const ex=options.exercises.filter(e=>e.courses.includes(course)).sort((a,b)=>a.title.localeCompare(b.title,'zh-Hans',{numeric:true}));
  ex.forEach(e=>check($('exercise-options'),JSON.stringify({asset_id:e.asset_id,exercise_id:e.exercise_id}),e.title));
 }
+function prepareReassignment(record){
+ const exercise=options.exercises.find(item=>item.asset_id===record.asset_id&&item.exercise_id===record.exercise_id);
+ const student=options.students.find(item=>item.id===record.student_id);
+ const course=options.courses.find(item=>exercise?.courses.includes(item.id)&&(item.id==='essay-training'||student?.courses.includes(item.id)));
+ if(!student||!course){$('status').textContent='该学生目前没有这套练习的权限，无法重新布置。';$('status').scrollIntoView({block:'nearest'});return;}
+ $('course').value=course.id;
+ renderOptions();
+ for(const input of $('student-options').querySelectorAll('input'))input.checked=input.value===record.student_id;
+ for(const input of $('exercise-options').querySelectorAll('input')){
+  const item=JSON.parse(input.value);
+  input.checked=item.asset_id===record.asset_id&&item.exercise_id===record.exercise_id;
+ }
+ $('title').value='重练 · '+record.title.replace(/^重练 · /,'').slice(0,95);
+ resetPublishDates();
+ $('title').focus();
+ $('publish-form').scrollIntoView({block:'start'});
+}
 const monthOf=v=>{const parts=new Intl.DateTimeFormat('en',{timeZone:'Asia/Singapore',year:'numeric',month:'2-digit'}).formatToParts(new Date(v));return parts.find(p=>p.type==='year').value+'-'+parts.find(p=>p.type==='month').value};
 const dateTime=v=>new Intl.DateTimeFormat('zh-SG',{timeZone:'Asia/Singapore',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(v));
 const date=v=>new Intl.DateTimeFormat('zh-SG',{timeZone:'Asia/Singapore',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(v));
@@ -46,8 +63,11 @@ function render(){
  for(const t of [...(isAdmin?[r.student_name]:[]),r.title+'／'+r.exercise_title,(r.opens_at?'开放 '+dateTime(r.opens_at)+'／截止 ':'')+dateTime(r.due_at),(r.closed_at?'已结束 · '+(r.submitted_at?labels[r.status]:'未交'):labels[r.status])+(r.submitted_at?' · '+dateTime(r.submitted_at)+(r.total?' · '+r.correct+'/'+r.total+'题正确':''):'')]){const td=document.createElement('td');td.textContent=t;tr.append(td)}
  const action=document.createElement('td');
  if(isAdmin){if(options?.schedule_enabled!==false&&r.opens_at&&!r.closed_at&&Date.parse(r.server_at)<=Date.parse(r.due_at)){const edit=document.createElement('button');edit.type='button';edit.textContent='修改日期';edit.onclick=()=>window.zxEditSchedule?.(r);action.append(edit)}if(!r.closed_at){const end=document.createElement('button');end.type='button';end.textContent='结束整份功课';end.onclick=()=>{if(confirm('结束“'+r.title+'”？所有获分配学生将不再需要补交，已交和未交记录均保留。'))busy(async()=>{await call('homework-close',{batch_id:r.batch_id});await reload();$('status').textContent='功课已结束，记录已保留在历史功课中。'})};action.append(end);const one=document.createElement('button');one.type='button';one.textContent='结束该学生功课';one.onclick=()=>{if(confirm('结束'+r.student_name+'的这份功课？仅这名学生不再补交，已交及未交记录均保留。'))busy(async()=>{await call('homework-close-student',{batch_id:r.batch_id,student_id:r.student_id});await reload();$('status').textContent='已结束该学生功课；记录保留，其他学生不受影响。'})};action.prepend(one)}const b=document.createElement('button');b.textContent='撤销整份功课';b.type='button';b.onclick=()=>{if(confirm('撤销“'+r.title+'”？这份功课将从所有获分配学生的列表及新统计中移除，答题记录保留。'))busy(async()=>{await call('homework-cancel',{batch_id:r.batch_id});await reload();$('status').textContent='功课已撤销。'})};action.append(b)}
- else if(r.submitted_at){const a=document.createElement('a');a.textContent='自主练习';a.href='portal.html?'+new URLSearchParams({course:r.asset_id,exercise:r.exercise_id});action.append(a)}
+ else if(r.submitted_at){const a=document.createElement('a');a.textContent='自主重练';a.href='portal.html?'+new URLSearchParams({course:r.asset_id,exercise:r.exercise_id});action.append(a)}
  else if(!r.closed_at&&!['upcoming','ended'].includes(r.status)){const a=document.createElement('a');a.textContent='开始练习';a.href='portal.html?'+new URLSearchParams({course:r.asset_id,exercise:r.exercise_id,homework:r.batch_id});action.append(a)}
+ if(isAdmin&&r.submitted_at&&options?.schedule_enabled!==false){
+  const reassign=document.createElement('button');reassign.type='button';reassign.textContent='重新布置';reassign.onclick=()=>prepareReassignment(r);action.prepend(reassign);
+ }
  if(r.wrong_items?.length){const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='错题记录';details.append(summary);r.wrong_items.forEach(q=>{const p=document.createElement('p');p.textContent=(q.prompt||q.id)+' · 考点：'+q.skill+' · 作答：'+JSON.stringify(q.answer)+' · 答案：'+JSON.stringify(q.expected);details.append(p)});action.append(details)}
  tr.append(action);$('rows').append(tr)}
  if(!list.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=isAdmin?5:4;td.textContent='暂无符合条件的功课。';tr.append(td);$('rows').append(tr)}

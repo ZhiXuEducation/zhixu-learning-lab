@@ -9,5 +9,6 @@
  if(['p5-start','p5-finish'].includes(b.op)&&b.assigned===true&&b.exercise_id===window.zxHomeworkExerciseId&&window.zxHomeworkBatchId)body.homework_batch_id=window.zxHomeworkBatchId;
  const headers={'Content-Type':'application/json',...(s.type==='student'?{'x-student-token':s.token}:{Authorization:'Bearer '+s.access_token})};
  const r=await fetch('https://cogvtrcoifppwkzzhect.supabase.co/functions/v1/zhixu-reports',{method:'POST',headers,body:JSON.stringify(body)}),data=await r.json();if(!r.ok)throw Error(data.error||'保存失败，请重试。');respond({data});
+ if(b.op==='p5-finish')showHomeworkRetry(body.homework_batch_id,body.asset_id,body.exercise_id);
  }catch(err){respond({error:err.message||'网络中断，请重试。'})}
  })})();

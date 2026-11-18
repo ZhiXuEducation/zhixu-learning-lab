@@ -63,9 +63,16 @@ function renderStudents(){
   const cell=document.createElement('td');cell.append(button('编辑',async()=>{hidePin();editor.elements.id.value=s.id;editor.elements.name.value=s.display_name;editor.elements.username.value=s.username||'';editor.elements.grade.value=s.grade;editor.elements.active.checked=s.active;$('active-label').hidden=false;$('editor-title').textContent='编辑学生';courseOptions(s.courses);editor.scrollIntoView({behavior:'smooth'});}));cell.append(document.createTextNode(' '),button('重设 PIN',async()=>{hidePin();const result=await request('reset-pin',{id:s.id});$('new-code').textContent=`英文账号：${result.username||result.code}`;$('new-pin').textContent=`新 PIN：${result.pin}`;$('credentials').hidden=false;message('PIN 已重设，原 PIN 和现有登录已失效。');}));row.append(cell);$('students').append(row);
  });
 }
+function showHomeworkRetry(batchId,assetId,exerciseId){
+ if(!batchId||batchId!==window.zxHomeworkBatchId||assetId!==window.zxActiveAssetId||exerciseId!==window.zxHomeworkExerciseId||$('lesson').hidden)return;
+ const wrapper=$('homework-retry');
+ wrapper.querySelector('a').href='portal.html?'+new URLSearchParams({course:assetId,exercise:exerciseId});
+ wrapper.hidden=false;
+}
 async function openCourse(assetId,exerciseId=null,homeworkId=null){
  if(openingCourse)return;openingCourse=true;
- lessonReturnView=$('holiday').hidden?'workspace':'holiday';showLoading('正在打开课程…');message('');
+ lessonReturnView=$('holiday').hidden?'workspace':'holiday';
+ $('homework-retry').hidden=true;showLoading('正在打开课程…');message('');
  try{
  if(homeworkId){
   const response=await fetch(API+'/functions/v1/zhixu-reports',{method:'POST',headers:{'Content-Type':'application/json','x-student-token':session?.token||''},body:JSON.stringify({op:'homework-open',homework_batch_id:homeworkId,asset_id:assetId,exercise_id:exerciseId})});
@@ -119,6 +126,7 @@ async function showWorkspace(){
   regular.push(essay);
  }
  $('close-holiday').hidden=holidayOnly;
+ $('holiday-homework').hidden=isAdmin;
  if(hasPsle){const card=document.createElement('section');card.className='card';const title=document.createElement('h3');title.textContent='PSLE 冲刺';card.append(title);card.append(button('进入 PSLE 冲刺',()=>openCourse('psle-review')));$('psle-courses').replaceChildren(card);}
  else $('psle-courses').replaceChildren();
  $('psle-section').hidden=!hasPsle;
