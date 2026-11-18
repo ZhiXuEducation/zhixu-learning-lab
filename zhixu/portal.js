@@ -111,6 +111,11 @@ async function openCourse(assetId,exerciseId=null,homeworkId=null){
  const result=await request('content',{asset_id:assetId});
  window.zxActiveAssetId=assetId;
  let html=result.html;
+ if(assetId==='p5-review'){
+  // srcdoc inherits the page's origin, but its location is about:srcdoc.
+  html=html.replace("e.origin!==location.origin||e.data?.type!=='zx-p5-response'", "e.origin!==window.origin||e.data?.type!=='zx-p5-response'")
+   .replace("parent.postMessage({type:'zx-p5-request',id,op,...body},location.origin)", "parent.postMessage({type:'zx-p5-request',id,op,...body},window.origin)");
+ }
  if(exerciseId){
   const id=JSON.stringify(exerciseId).replace(/</g,'\\u003c');
   const launch=`<script>window.addEventListener('load',()=>{try{const id=${id};
