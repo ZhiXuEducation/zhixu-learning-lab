@@ -51,8 +51,8 @@ function button(label,action){const b=document.createElement('button');b.textCon
 function hidePin(){ $('new-code').textContent='';$('new-pin').textContent='';$('credentials').hidden=true; }
 function courseOptions(selected=[]){
  $('course-options').replaceChildren();const grade=editor.elements.grade.value.toLowerCase();
- allCourses.filter(c=>c.id==='essay-training' || (grade==='p6'?c.id.startsWith('p6-'):c.id.startsWith('s'))).forEach(c=>{
-  const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.name='course';input.value=c.id;input.checked=c.id==='essay-training'||selected.includes(c.id);input.disabled=c.id==='essay-training';label.append(input,document.createTextNode(c.title));$('course-options').append(label);
+ allCourses.filter(c=>c.id==='holiday-training' || (grade==='p6'?c.id.startsWith('p6-'):c.id.startsWith('s'))).forEach(c=>{
+  const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.name='course';input.value=c.id;input.checked=selected.includes(c.id);label.append(input,document.createTextNode(c.title));$('course-options').append(label);
  });
 }
 function resetEditor(){editor.reset();editor.elements.id.value='';$('editor-title').textContent='新增学生';$('active-label').hidden=true;courseOptions();}
@@ -99,12 +99,11 @@ async function showWorkspace(){
  const me=await request('me');allCourses=await request('courses');
  $('admin').hidden=me.role!=='admin';$('greeting').textContent=me.role==='admin'?'管理后台':`${me.name}，欢迎回来`;
  $('courses').replaceChildren();$('holiday-courses').replaceChildren();
- const holidayIds=new Set(['p5-review','essay-training','holiday-training']);
  const isAdmin=me.role==='admin';
- // Holiday is one section, not a separate teacher tool.
- // Only server-authorized courses can appear for students.
- const holiday=allCourses.filter(c=>holidayIds.has(c.id));
- const regular=allCourses.filter(c=>!holidayIds.has(c.id));
+ const hasHoliday=allCourses.some(c=>c.id==='holiday-training');
+ const essay=allCourses.find(c=>c.id==='essay-training');
+ const regular=allCourses.filter(c=>!['holiday-training','p5-review','essay-training'].includes(c.id));
+ const holidayOnly=!isAdmin&&hasHoliday&&!regular.length;
  const hasPsle=allCourses.some(c=>c.id==='p6-standard'||c.id==='p6-higher');
  function courseCard(c,label){
   const card=document.createElement('section');card.className='card';
@@ -113,23 +112,26 @@ async function showWorkspace(){
   else card.append(button('进入课程',()=>openCourse(c.id)));
   return card;
  }
- holiday.forEach(c=>$('holiday-courses').append(courseCard(c,c.id==='p5-review'?'语文应用（小五复习）':undefined)));
- // The existing language-application exercises live inside the PSLE revision asset.
- // Keep this shortcut admin-only until its own backend authorization is isolated.
- if(isAdmin&&hasPsle){const card=document.createElement('section');card.className='card';const title=document.createElement('h3');title.textContent='语文应用（PSLE）';card.append(title);card.append(button('进入语文应用',async()=>{await openCourse('psle-review');}));$('holiday-courses').append(card);}
+ if(hasHoliday){
+  $('holiday-courses').append(courseCard({id:'p5-review',title:'语文应用（小五复习）'}));
+  if(essay)$('holiday-courses').append(courseCard(essay));
+ }else if(essay){
+  regular.push(essay);
+ }
+ $('close-holiday').hidden=holidayOnly;
  if(hasPsle){const card=document.createElement('section');card.className='card';const title=document.createElement('h3');title.textContent='PSLE 冲刺';card.append(title);card.append(button('进入 PSLE 冲刺',()=>openCourse('psle-review')));$('psle-courses').replaceChildren(card);}
  else $('psle-courses').replaceChildren();
  $('psle-section').hidden=!hasPsle;
  regular.forEach(c=>$('courses').append(courseCard(c)));
- $('holiday-section').hidden=!holiday.length&&!(isAdmin&&hasPsle);
+ $('holiday-section').hidden=!hasHoliday;
  $('regular-section').hidden=!regular.length;
  $('student-homework').hidden=isAdmin;
  if(!allCourses.length)$('courses').textContent='暂未获授权课程，请联系老师。';
  if(me.role==='admin'){students=await request('list');renderStudents();resetEditor();}
  message('');
  const query=new URLSearchParams(location.search),asset=query.get('course'),exercise=query.get('exercise');
+ showView(holidayOnly?'holiday':'workspace');
  if(asset){try{await openCourse(asset,exercise,query.get('homework'));}catch(e){message(e.message,true);}}
- else showView('workspace');
 }
 $('student-login').onsubmit=e=>{e.preventDefault();const f=e.currentTarget;busy(f,async()=>{
  saveSession(null);const result=await request('login',{code:f.elements.code.value,pin:f.elements.pin.value});f.elements.pin.value='';saveSession({type:'student',token:result.token});await enterSession();
@@ -151,10 +153,12 @@ $('cancel-edit').onclick=resetEditor;$('hide-credentials').onclick=hidePin;
 $('enter-holiday').onclick=()=>{message('');showView('holiday');$('close-holiday').focus();};
 $('close-holiday').onclick=()=>{message('');showView('workspace');$('enter-holiday').focus();};
 $('close-lesson').onclick=()=>{$('lesson-frame').srcdoc='';window.zxHomeworkBatchId=null;courseUrl(null,null,null);showView(lessonReturnView);};
-$('logout').onclick=()=>busy($('workspace'),async()=>{
+function logout(event){return busy(event.currentTarget.parentElement,async()=>{
  try{if(session?.type==='student')await request('logout');else if(session?.type==='admin')await fetch(`${API}/auth/v1/logout?scope=local`,{method:'POST',headers:{apikey:PUBLIC_KEY,Authorization:`Bearer ${session.access_token}`}});}
  finally{saveSession(null);hidePin();$('lesson-frame').srcdoc='';showLogin();$('students').replaceChildren();students=[];allCourses=[];message('已退出登录。');}
-});
+});}
+$('logout').onclick=logout;
+$('logout-holiday').onclick=logout;
 $('retry-session').onclick=()=>enterSession();
 if(session)enterSession();else showLogin();
 
