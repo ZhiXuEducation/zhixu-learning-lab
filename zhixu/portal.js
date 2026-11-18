@@ -97,7 +97,25 @@ async function openCourse(assetId,exerciseId=null,homeworkId=null){
 async function showWorkspace(){
  const me=await request('me');allCourses=await request('courses');
  $('admin').hidden=me.role!=='admin';$('greeting').textContent=me.role==='admin'?'管理后台':`${me.name}，欢迎回来`;
- $('courses').replaceChildren();allCourses.forEach(c=>{const card=document.createElement('section');card.className='card';const heading=document.createElement('h3');heading.textContent=c.title;card.append(heading);if(c.id==='p6-standard'){const a=document.createElement('a');a.href='primary-standard.html';a.className='btn';a.textContent='进入小学普通华文';card.append(a)}else card.append(button('进入课程',()=>openCourse(c.id)));$('courses').append(card);});
+ $('courses').replaceChildren();$('holiday-courses').replaceChildren();
+ const holidayIds=new Set(['p5-review','essay-training','holiday-training']);
+ const isAdmin=me.role==='admin';
+ // Holiday is one section, not a separate teacher tool.
+ // Only server-authorized courses can appear for students.
+ const holiday=allCourses.filter(c=>holidayIds.has(c.id));
+ const regular=allCourses.filter(c=>!holidayIds.has(c.id));
+ function courseCard(c){
+  const card=document.createElement('section');card.className='card';
+  const heading=document.createElement('h3');heading.textContent=c.id==='p5-review'?'小五复习':c.id==='essay-training'?'作文审题训练':c.title;card.append(heading);
+  if(c.id==='p6-standard'){const a=document.createElement('a');a.href='primary-standard.html';a.className='btn';a.textContent='进入小学普通华文';card.append(a);}
+  else card.append(button('进入课程',()=>openCourse(c.id)));
+  return card;
+ }
+ holiday.forEach(c=>$('holiday-courses').append(courseCard(c)));
+ regular.forEach(c=>$('courses').append(courseCard(c)));
+ $('holiday-section').hidden=!holiday.length;
+ $('regular-section').hidden=!regular.length;
+ $('student-homework').hidden=isAdmin;
  if(!allCourses.length)$('courses').textContent='暂未获授权课程，请联系老师。';
  if(me.role==='admin'){students=await request('list');renderStudents();resetEditor();}
  message('');
