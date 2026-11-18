@@ -101,6 +101,7 @@ function showHomeworkRetry(batchId,assetId,exerciseId){
 async function openCourse(assetId,exerciseId=null,homeworkId=null){
  if(openingCourse)return;openingCourse=true;
  lessonReturnView=$('holiday').hidden?'workspace':'holiday';
+ $('close-lesson').textContent=lessonReturnView==='holiday'?'← 返回假期班训练':'← 返回课程列表';
  $('homework-retry').hidden=true;showLoading('正在打开课程…');message('');
  try{
  if(homeworkId){
@@ -114,7 +115,10 @@ async function openCourse(assetId,exerciseId=null,homeworkId=null){
  if(assetId==='p5-review'){
   // Pass the portal's HTTP(S) origin explicitly to the srcdoc lesson.
   const portalOrigin=JSON.stringify(location.origin);
-  html=html.replace("e.origin!==location.origin||e.data?.type!=='zx-p5-response'", `e.origin!==${portalOrigin}||e.data?.type!=='zx-p5-response'`)
+  html=html.replace(/<a\b[^>]*>← 返回小学普通华文<\/a>/,'')
+   .replace('async function start(s,original=null,assigned=false){', "async function start(s,original=null,assigned=false){if(!ready)throw Error('请先点击「刷新学习记录」，连接成功后再开始练习。');")
+   .replace("task(async()=>{await refresh();home()}).then(", "home();task(async()=>{await refresh();home()}).then(")
+   .replace("e.origin!==location.origin||e.data?.type!=='zx-p5-response'", `e.origin!==${portalOrigin}||e.data?.type!=='zx-p5-response'`)
    .replace("parent.postMessage({type:'zx-p5-request',id,op,...body},location.origin)", `parent.postMessage({type:'zx-p5-request',id,op,...body},${portalOrigin})`);
  }
  if(exerciseId){
@@ -173,7 +177,7 @@ async function showWorkspace(){
  if(me.role==='admin'){students=await request('list');renderStudents();resetEditor();await loadTeacherDashboard();}
  message('');
  const query=new URLSearchParams(location.search),asset=query.get('course'),exercise=query.get('exercise');
- showView(holidayOnly?'holiday':'workspace');
+ showView(holidayOnly||(hasHoliday&&asset==='p5-review')?'holiday':'workspace');
  if(asset){try{await openCourse(asset,exercise,query.get('homework'));}catch(e){message(e.message,true);}}
 }
 $('student-login').onsubmit=e=>{e.preventDefault();const f=e.currentTarget;busy(f,async()=>{
