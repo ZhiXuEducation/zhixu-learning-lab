@@ -8,7 +8,13 @@
  function selectedStudents(){return [...$('schedule-students').querySelectorAll('input:checked')].map(x=>x.value)}
  function defaultDue(r){if(!r.manualDue&&r.openDate.value){r.dueDate.value=day(r.openDate.value,6);r.dueTime.value='23:59'}}
  function fillExercises(r){r.exercise.replaceChildren();const course=$('schedule-course').value;
-  options.exercises.filter(e=>e.courses.includes(course)).sort((a,b)=>a.title.localeCompare(b.title,'zh-Hans',{numeric:true})).forEach(e=>addOption(r.exercise,JSON.stringify({asset_id:e.asset_id,exercise_id:e.exercise_id}),e.title));r.exercise.selectedIndex=-1;
+  const exercises=exercisesForCourse(options.exercises,course).sort((a,b)=>a.title.localeCompare(b.title,'zh-Hans',{numeric:true}));
+  for(const [label,items] of holidayExerciseGroups(exercises,course)){
+   const target=label?document.createElement('optgroup'):r.exercise;
+   if(label){target.label=label;r.exercise.append(target);}
+   items.forEach(e=>addOption(target,JSON.stringify({asset_id:e.asset_id,exercise_id:e.exercise_id}),e.title));
+  }
+  r.exercise.selectedIndex=-1;
  }
  function input(type,value,label,parent){const l=document.createElement('label'),e=document.createElement('input');e.type=type;e.value=value;e.required=true;l.append(document.createTextNode(label),e);parent.append(l);return e}
  function addRow(){if(pending)return;if(!$('schedule-first').value){$('status').textContent='请选择第一份开放日期。';return}if(rows.length>=30){$('status').textContent='每次最多安排30份功课。';return}

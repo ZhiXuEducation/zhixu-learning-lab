@@ -30,8 +30,15 @@ function check(container,value,text){const l=document.createElement('label'),i=d
 function renderOptions(){
  const course=$('course').value;$('student-options').replaceChildren();$('exercise-options').replaceChildren();
  options.students.filter(s=>course==='essay-training'||s.courses.includes(course)).forEach(s=>check($('student-options'),s.id,`${s.number}号 ${s.name}`));
- const ex=options.exercises.filter(e=>e.courses.includes(course)).sort((a,b)=>a.title.localeCompare(b.title,'zh-Hans',{numeric:true}));
- ex.forEach(e=>check($('exercise-options'),JSON.stringify({asset_id:e.asset_id,exercise_id:e.exercise_id}),e.title));
+ const ex=exercisesForCourse(options.exercises,course).sort((a,b)=>a.title.localeCompare(b.title,'zh-Hans',{numeric:true}));
+ for(const [label,exercises] of holidayExerciseGroups(ex,course)){
+  let target=$('exercise-options');
+  if(label){
+   const group=document.createElement('fieldset'),legend=document.createElement('legend');
+   legend.textContent=label;group.append(legend);target.append(group);target=group;
+  }
+  exercises.forEach(e=>check(target,JSON.stringify({asset_id:e.asset_id,exercise_id:e.exercise_id}),e.title));
+ }
 }
 function prepareReassignment(record){
  const exercise=options.exercises.find(item=>item.asset_id===record.asset_id&&item.exercise_id===record.exercise_id);
