@@ -5,9 +5,9 @@ const $=id=>document.getElementById(id);
 let session=null, allCourses=[], students=[];
 try{session=JSON.parse(sessionStorage.getItem('zx_session')||'null');}catch{session=null;}
 const editor=$('student-editor');
-let restoring=null, openingCourse=false;
+let restoring=null, openingCourse=false, lessonReturnView='workspace';
 function showView(view){
- ['loading','login','workspace','lesson'].forEach(id=>$(id).hidden=id!==view);
+ ['loading','login','workspace','holiday','lesson'].forEach(id=>$(id).hidden=id!==view);
 }
 function showLoading(text){$('loading-text').textContent=text;$('retry-session').hidden=true;showView('loading');}
 function expired(error){return error.status===401 || (error.status===403 && error.op==='me');}
@@ -64,7 +64,8 @@ function renderStudents(){
  });
 }
 async function openCourse(assetId,exerciseId=null,homeworkId=null){
- if(openingCourse)return;openingCourse=true;showLoading('正在打开课程…');message('');
+ if(openingCourse)return;openingCourse=true;
+ lessonReturnView=$('holiday').hidden?'workspace':'holiday';showLoading('正在打开课程…');message('');
  try{
  if(homeworkId){
   const response=await fetch(API+'/functions/v1/zhixu-reports',{method:'POST',headers:{'Content-Type':'application/json','x-student-token':session?.token||''},body:JSON.stringify({op:'homework-open',homework_batch_id:homeworkId,asset_id:assetId,exercise_id:exerciseId})});
@@ -90,7 +91,7 @@ async function openCourse(assetId,exerciseId=null,homeworkId=null){
  }
  $('lesson-frame').hidden=false;$('lesson-frame').srcdoc=html;courseUrl(assetId,exerciseId,homeworkId);showView('lesson');message('');
  }catch(e){
-  if(expired(e)){saveSession(null);showLogin();}else showView('workspace');
+  if(expired(e)){saveSession(null);showLogin();}else showView(lessonReturnView);
   throw e;
  }finally{openingCourse=false;}
 }
@@ -105,17 +106,17 @@ async function showWorkspace(){
  const holiday=allCourses.filter(c=>holidayIds.has(c.id));
  const regular=allCourses.filter(c=>!holidayIds.has(c.id));
  const hasPsle=allCourses.some(c=>c.id==='p6-standard'||c.id==='p6-higher');
- function courseCard(c){
+ function courseCard(c,label){
   const card=document.createElement('section');card.className='card';
-  const heading=document.createElement('h3');heading.textContent=c.id==='p5-review'?'小五复习':c.id==='essay-training'?'作文审题训练':c.title;card.append(heading);
+  const heading=document.createElement('h3');heading.textContent=label||(c.id==='essay-training'?'作文审题训练':c.title);card.append(heading);
   if(c.id==='p6-standard'){const a=document.createElement('a');a.href='primary-standard.html';a.className='btn';a.textContent='进入课程';card.append(a);}
   else card.append(button('进入课程',()=>openCourse(c.id)));
   return card;
  }
- holiday.forEach(c=>$('holiday-courses').append(courseCard(c)));
+ holiday.forEach(c=>$('holiday-courses').append(courseCard(c,c.id==='p5-review'?'语文应用（小五复习）':undefined)));
  // The existing language-application exercises live inside the PSLE revision asset.
  // Keep this shortcut admin-only until its own backend authorization is isolated.
- if(isAdmin&&hasPsle){const card=document.createElement('section');card.className='card';const title=document.createElement('h3');title.textContent='语文应用';card.append(title);card.append(button('进入语文应用',async()=>{await openCourse('psle-review');}));$('holiday-courses').append(card);}
+ if(isAdmin&&hasPsle){const card=document.createElement('section');card.className='card';const title=document.createElement('h3');title.textContent='语文应用（PSLE）';card.append(title);card.append(button('进入语文应用',async()=>{await openCourse('psle-review');}));$('holiday-courses').append(card);}
  if(hasPsle){const card=document.createElement('section');card.className='card';const title=document.createElement('h3');title.textContent='PSLE 冲刺';card.append(title);card.append(button('进入 PSLE 冲刺',()=>openCourse('psle-review')));$('psle-courses').replaceChildren(card);}
  else $('psle-courses').replaceChildren();
  $('psle-section').hidden=!hasPsle;
@@ -147,7 +148,9 @@ editor.onsubmit=e=>{e.preventDefault();busy(editor,async()=>{
  students=await request('list');renderStudents();
  });};
 $('cancel-edit').onclick=resetEditor;$('hide-credentials').onclick=hidePin;
-$('close-lesson').onclick=()=>{$('lesson-frame').srcdoc='';window.zxHomeworkBatchId=null;courseUrl(null,null,null);showView('workspace');};
+$('enter-holiday').onclick=()=>{message('');showView('holiday');$('close-holiday').focus();};
+$('close-holiday').onclick=()=>{message('');showView('workspace');$('enter-holiday').focus();};
+$('close-lesson').onclick=()=>{$('lesson-frame').srcdoc='';window.zxHomeworkBatchId=null;courseUrl(null,null,null);showView(lessonReturnView);};
 $('logout').onclick=()=>busy($('workspace'),async()=>{
  try{if(session?.type==='student')await request('logout');else if(session?.type==='admin')await fetch(`${API}/auth/v1/logout?scope=local`,{method:'POST',headers:{apikey:PUBLIC_KEY,Authorization:`Bearer ${session.access_token}`}});}
  finally{saveSession(null);hidePin();$('lesson-frame').srcdoc='';showLogin();$('students').replaceChildren();students=[];allCourses=[];message('已退出登录。');}
